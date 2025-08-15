@@ -1,0 +1,122 @@
+{% extends "home.html" %}
+
+{% block title %}Gestión de Usuarios{% endblock %}
+
+{% block styles %}
+<link rel="stylesheet" href="/static/css/usuarios.css">
+{% endblock %}
+
+{% block content %}
+<div class="main-content">
+    <div class="header">
+        <h2><i class="fas fa-users"></i> Gestión de Usuarios</h2>
+        <div class="header-actions">
+            <button class="btn btn-outline" id="refreshBtn"><i class="fas fa-sync-alt"></i> Actualizar</button>
+            <button class="btn btn-primary" id="newUserBtn"><i class="fas fa-plus"></i> Nuevo Usuario</button>
+        </div>
+    </div>
+    
+    <!-- Listado de usuarios -->
+    <div class="card">
+        <div class="card-header">
+            <h3>Usuarios Registrados</h3>
+            <div class="filter">
+                <select class="form-control" id="filterSelect" style="width: auto;">
+                    <option value="all">Mostrar todos</option>
+                    <option value="active">Mostrar solo activos</option>
+                    <option value="inactive">Mostrar solo inactivos</option>
+                </select>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="table-container">
+                <table id="usersTable">
+                    <thead>
+                        <tr>
+                            <th>Nombre</th>
+                            <th>Email</th>
+                            <th>Rol</th>
+                            <th>Estado</th>
+                            <th>Fecha Registro</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Los datos se cargarán dinámicamente -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para crear/editar usuario -->
+<div class="modal" id="userModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h4 id="modalTitle">Crear Nuevo Usuario</h4>
+            <button class="close-btn">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="userForm">
+                <input type="hidden" id="userId">
+                <div class="form-group">
+                    <label for="name">Nombre Completo *</label>
+                    <input type="text" id="name" class="form-control" placeholder="Ingrese nombre completo" required>
+                </div>
+                <div class="form-group">
+                    <label for="username">Nombre de Usuario *</label>
+                    <input type="text" id="username" class="form-control" placeholder="Ingrese nombre de usuario" required>
+                </div>
+                <div class="form-group">
+                    <label for="email">Correo Electrónico *</label>
+                    <input type="email" id="email" class="form-control" placeholder="Ingrese email" required>
+                </div>
+                <div class="row">
+                    <div class="col">
+                        <div class="form-group">
+                            <label for="password">Contraseña *</label>
+                            <input type="password" id="password" class="form-control" placeholder="Ingrese contraseña" required>
+                        </div>
+                    </div>
+                    <div class="col">
+                        <div class="form-group">
+                            <label for="confirmPassword">Confirmar Contraseña *</label>
+                            <input type="password" id="confirmPassword" class="form-control" placeholder="Confirme contraseña" required>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col">
+                        <div class="form-group">
+                            <label for="role">Rol de Usuario *</label>
+                            <select id="role" class="form-control" required>
+                                <option value="admin">Administrador</option>
+                                <option value="gerente">Gerente</option>
+                                <option value="empleado">Empleado</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col">
+                        <div class="form-group">
+                            <label for="status">Estado *</label>
+                            <select id="status" class="form-control" required>
+                                <option value="Activo">Activo</option>
+                                <option value="Inactivo">Inactivo</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group" style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+                    <button type="button" class="btn btn-outline" id="cancelBtn">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/usuarios.js"></script>
+{% endblock %}

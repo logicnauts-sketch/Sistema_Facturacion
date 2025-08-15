@@ -1,0 +1,223 @@
+{% extends "home.html" %}
+
+{% block title %}Gestión de Proveedores{% endblock %}
+
+{% block styles %}
+<link rel="stylesheet" href="/static/css/proovedores.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/notyf@3/notyf.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+{% endblock %}
+
+{% block content %}
+<main id="gestor-proveedores">
+    <div class="container">
+        <header class="page-header">
+            <div class="breadcrumb">
+                <a href="#">Inicio</a>
+                <span class="separator">/</span>
+                <span>Proveedores</span>
+            </div>
+            <h1>Gestión de Proveedores</h1>
+            <p>Administra los proveedores de tu negocio</p>
+        </header>
+
+        <!-- Stats -->
+        <div class="stats-container">
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-users"></i>
+                </div>
+                <div class="stat-content">
+                    <h3 id="stat-proveedores">0</h3>
+                    <p>Proveedores activos</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-file-invoice-dollar"></i>
+                </div>
+                <div class="stat-content">
+                    <h3 id="stat-facturas">0</h3>
+                    <p>Facturas pendientes</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-money-bill-wave"></i>
+                </div>
+                <div class="stat-content">
+                    <h3 id="stat-total">RD$ 0</h3>
+                    <p>Total por pagar</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <!-- Lista de Proveedores -->
+            <section class="card">
+                <div class="content-header">
+                    <h2><i class="fas fa-list"></i> Lista de Proveedores</h2>
+                    <button class="btn btn-primary" id="open-provider-modal">
+                        <i class="fas fa-plus"></i> Nuevo Proveedor
+                    </button>
+                </div>
+                <div class="search-container">
+                    <div class="search-input">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="search-input" placeholder="Buscar por nombre o RNC...">
+                    </div>
+                    <button class="btn btn-outline">
+                        <i class="fas fa-filter"></i> Filtrar
+                    </button>
+                </div>
+                <div class="table-container">
+                    <table id="providers-table">
+                        <thead>
+                            <tr>
+                                <th>Nombre</th>
+                                <th>RNC/Cédula</th>
+                                <th>Teléfono</th>
+                                <th>Estado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Datos generados con JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+                <div class="pagination">
+                    <button class="pagination-btn active">1</button>
+                    <button class="pagination-btn">2</button>
+                    <button class="pagination-btn">3</button>
+                    <button class="pagination-btn">4</button>
+                    <button class="pagination-btn">5</button>
+                </div>
+            </section>
+
+            <!-- Cuentas por Pagar -->
+            <section class="card">
+                <div class="content-header">
+                    <h2><i class="fas fa-file-invoice-dollar"></i> Cuentas por Pagar</h2>
+                    <div>
+                        <button class="btn btn-outline" id="refresh-payables">
+                            <i class="fas fa-sync-alt"></i> Actualizar
+                        </button>
+                        <button class="btn btn-success">
+                            <i class="fas fa-plus"></i> Nuevo Pago
+                        </button>
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table id="payables-table">
+                        <thead>
+                            <tr>
+                                <th>Proveedor</th>
+                                <th>Factura</th>
+                                <th>Fecha Límite</th>
+                                <th>Monto</th>
+                                <th>Estado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Datos generados con JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <!-- Modal Registro de Proveedores -->
+    <div class="modal" id="provider-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-user-plus"></i> Registro de Proveedores</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="provider-form">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="name">Nombre del proveedor *</label>
+                            <input type="text" id="name" class="form-control" placeholder="Ingrese el nombre">
+                            <div class="error-message">Este campo es obligatorio</div>
+                        </div>
+                        <div class="form-group">
+                            <label for="rnc">RNC o Cédula *</label>
+                            <input type="text" id="rnc" class="form-control" placeholder="Ingrese RNC o cédula">
+                            <div class="error-message">Este campo es obligatorio</div>
+                        </div>
+                        <div class="form-group">
+                            <label for="phone">Teléfono</label>
+                            <input type="tel" id="phone" class="form-control" placeholder="Ingrese teléfono">
+                        </div>
+                        <div class="form-group">
+                            <label for="email">Correo electrónico *</label>
+                            <input type="email" id="email" class="form-control" placeholder="Ingrese correo">
+                            <div class="error-message">Ingrese un correo válido</div>
+                        </div>
+                        <div class="form-group">
+                            <label for="address">Dirección</label>
+                            <textarea id="address" class="form-control" placeholder="Ingrese dirección" rows="2"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="status">Estado</label>
+                            <div class="switch-container">
+                                <div class="switch">
+                                    <input type="checkbox" id="status" checked>
+                                    <span class="slider"></span>
+                                </div>
+                                <div id="status-badge" class="status-badge status-active">Activo</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-footer">
+                        <button type="reset" class="btn btn-outline">Limpiar</button>
+                        <button type="submit" class="btn btn-primary">Guardar Proveedor</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Historial de Compras -->
+    <div class="modal" id="history-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-history"></i> Historial de Compras</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="provider-info">
+                    <h4>Proveedor: <span id="modal-provider-name">Suministros ABC</span></h4>
+                    <p>RNC: <span id="modal-provider-rnc">123456789</span></p>
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Factura</th>
+                                <th>Monto Total</th>
+                                <th>Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody id="history-table-body">
+                            <!-- Datos cargados con JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://cdn.jsdelivr.net/npm/notyf@3/notyf.min.js"></script>
+<script src="/static/js/proovedores.js"></script>
+{% endblock %}

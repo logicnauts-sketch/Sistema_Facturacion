@@ -1,0 +1,295 @@
+{% extends "home.html" %}
+
+{% block title %}Ingresos y Egresos{% endblock %}
+
+    {% block styles %}
+    <link rel="stylesheet" href="/static/css/balanceeyi.css">
+    {% endblock %}
+    
+
+
+{% block content %}
+    <div class="container">
+        <div class="header">
+            <div class="header-content">
+                <h1>Ingresos y Egresos</h1>
+                <p>Control financiero de todas las transacciones</p>
+            </div>
+        </div>
+        
+        <div class="dashboard">
+            <div class="summary-cards">
+                <div class="card">
+                    <div class="card-header">
+                        <div>
+                            <div class="card-title">Ingresos del Mes</div>
+                            <div class="card-value income-text">RD$ 325,400</div>
+                        </div>
+                        <div class="card-icon income-bg">
+                            <i class="fas fa-arrow-up"></i>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <span class="income-text">+12.5%</span> vs mes anterior
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header">
+                        <div>
+                            <div class="card-title">Egresos del Mes</div>
+                            <div class="card-value expense-text">RD$ 187,200</div>
+                        </div>
+                        <div class="card-icon expense-bg">
+                            <i class="fas fa-arrow-down"></i>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <span class="expense-text">+8.3%</span> vs mes anterior
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header">
+                        <div>
+                            <div class="card-title">Utilidad Neta</div>
+                            <div class="card-value profit-text">RD$ 138,200</div>
+                        </div>
+                        <div class="card-icon profit-bg">
+                            <i class="fas fa-chart-line"></i>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <span class="income-text">+15.2%</span> vs mes anterior
+                    </div>
+                </div>
+            </div>
+            
+            <div class="transactions-section">
+                <div class="section-header">
+                    <div class="section-header-top">
+                        <h2 class="section-title">Registro de Transacciones</h2>
+                        <button id="openModalBtn" class="btn">
+                            <i class="fas fa-plus"></i> Nueva Transacción
+                        </button>
+                    </div>
+                    <div class="tabs">
+                        <div class="tab active" data-tab="all">Todas</div>
+                        <div class="tab" data-tab="income">Ingresos</div>
+                        <div class="tab" data-tab="expense">Egresos</div>
+                    </div>
+                </div>
+                
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Fecha <i class="fas fa-sort"></i></th>
+                                <th>Tipo <i class="fas fa-sort"></i></th>
+                                <th>Categoría <i class="fas fa-sort"></i></th>
+                                <th>Concepto <i class="fas fa-sort"></i></th>
+                                <th>Monto <i class="fas fa-sort"></i></th>
+                                <th>Responsable <i class="fas fa-sort"></i></th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="transactionsTable">
+                            <tr>
+                                <td>25/08/2023</td>
+                                <td><span class="transaction-tag income-tag">Ingreso</span></td>
+                                <td>Ventas</td>
+                                <td>Pago factura #001-2023</td>
+                                <td class="amount income-text">RD$ 25,000.00</td>
+                                <td>Juan Pérez</td>
+                                <td>
+                                    <div class="actions">
+                                        <div class="action-btn edit-btn">
+                                            <i class="fas fa-edit"></i>
+                                        </div>
+                                        <div class="action-btn delete-btn">
+                                            <i class="fas fa-trash"></i>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>24/08/2023</td>
+                                <td><span class="transaction-tag expense-tag">Egreso</span></td>
+                                <td>Servicios</td>
+                                <td>Pago de electricidad</td>
+                                <td class="amount expense-text">RD$ 12,400.00</td>
+                                <td>María Rodríguez</td>
+                                <td>
+                                    <div class="actions">
+                                        <div class="action-btn edit-btn">
+                                            <i class="fas fa-edit"></i>
+                                        </div>
+                                        <div class="action-btn delete-btn">
+                                            <i class="fas fa-trash"></i>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>20/08/2023</td>
+                                <td><span class="transaction-tag income-tag">Ingreso</span></td>
+                                <td>Servicios</td>
+                                <td>Pago proyecto ABC</td>
+                                <td class="amount income-text">RD$ 45,000.00</td>
+                                <td>Carlos López</td>
+                                <td>
+                                    <div class="actions">
+                                        <div class="action-btn edit-btn">
+                                            <i class="fas fa-edit"></i>
+                                        </div>
+                                        <div class="action-btn delete-btn">
+                                            <i class="fas fa-trash"></i>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>18/08/2023</td>
+                                <td><span class="transaction-tag expense-tag">Egreso</span></td>
+                                <td>Nómina</td>
+                                <td>Pago quincenal de empleados</td>
+                                <td class="amount expense-text">RD$ 38,700.00</td>
+                                <td>Recursos Humanos</td>
+                                <td>
+                                    <div class="actions">
+                                        <div class="action-btn edit-btn">
+                                            <i class="fas fa-edit"></i>
+                                        </div>
+                                        <div class="action-btn delete-btn">
+                                            <i class="fas fa-trash"></i>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div class="charts-container">
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h3 class="chart-title">Distribución de Ingresos</h3>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="incomeChart"></canvas>
+                    </div>
+                    <div class="chart-legend">
+                        <div class="legend-item">
+                            <div class="legend-color" style="background-color: #10b981;"></div>
+                            <span>Ventas de Productos (76%)</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background-color: #3b82f6;"></div>
+                            <span>Servicios (20%)</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background-color: #8b5cf6;"></div>
+                            <span>Otros Ingresos (4%)</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h3 class="chart-title">Distribución de Egresos</h3>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="expensesChart"></canvas>
+                    </div>
+                    <div class="chart-legend">
+                        <div class="legend-item">
+                            <div class="legend-color" style="background-color: #ef4444;"></div>
+                            <span>Inventario (35%)</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background-color: #f97316;"></div>
+                            <span>Servicios (23%)</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background-color: #eab308;"></div>
+                            <span>Nómina (21%)</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background-color: #8b5cf6;"></div>
+                            <span>Mantenimiento (13%)</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background-color: #10b981;"></div>
+                            <span>Impuestos (8%)</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para agregar nueva transacción -->
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal modal-in" id="transactionModal">
+            <div class="modal-header">
+                <h3 class="modal-title"><i class="fas fa-file-invoice-dollar"></i> Nueva Transacción</h3>
+                <button class="close-modal" id="closeModalBtn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="transactionForm">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="transactionDate">Fecha</label>
+                            <input type="date" id="transactionDate" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="transactionType">Tipo</label>
+                            <select id="transactionType" class="form-control" required>
+                                <option value="">Seleccionar tipo</option>
+                                <option value="Ingreso">Ingreso</option>
+                                <option value="Egreso">Egreso</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="transactionCategory">Categoría</label>
+                        <select id="transactionCategory" class="form-control" required>
+                            <option value="">Seleccionar categoría</option>
+                            <!-- Las opciones se actualizarán según el tipo -->
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="transactionConcept">Concepto</label>
+                        <input type="text" id="transactionConcept" class="form-control" placeholder="Descripción de la transacción" required>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="transactionAmount">Monto (RD$)</label>
+                            <input type="number" id="transactionAmount" class="form-control" placeholder="0.00" min="0" step="0.01" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="transactionResponsible">Responsable</label>
+                            <input type="text" id="transactionResponsible" class="form-control" placeholder="Nombre del responsable" required>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="cancelModalBtn">Cancelar</button>
+                <button class="btn btn-success" id="saveTransactionBtn">
+                    <i class="fas fa-save"></i> Guardar Transacción
+                </button>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/balanceeyi.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+{% endblock %}

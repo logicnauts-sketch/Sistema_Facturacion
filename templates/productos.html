@@ -1,0 +1,291 @@
+{% extends "home.html" %}
+
+{% block title %}Gestión de Productos{% endblock %}
+
+{% block styles %}
+{{ super() }}
+
+<!-- SweetAlert2 CSS -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+<link rel="stylesheet" href="/static/css/productos.css">
+
+<style>
+    .no-products-message {
+        padding: 40px 20px;
+        text-align: center;
+        color: #6c757d;
+    }
+    
+    .no-products-message i {
+        font-size: 60px;
+        color: #adb5bd;
+        margin-bottom: 20px;
+        display: block;
+    }
+    
+    .no-products-message h3 {
+        font-size: 24px;
+        margin-bottom: 10px;
+        color: #495057;
+    }
+    
+    .no-products-message p {
+        font-size: 16px;
+        margin-bottom: 0;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="content-container">
+    <div class="section active">
+        <h1 class="section-title">
+            <i class="fas fa-box"></i>
+            Gestión de Productos
+        </h1>
+
+        <div class="text-right mb-3" style="display: flex; justify-content: flex-end; gap: 10px;">
+            <button id="openAddProductModal" class="btn btn-primary">
+                <i class="fas fa-plus"></i> Agregar Producto
+            </button>
+            <button id="openAddCategoryModal" class="btn btn-outline">
+                <i class="fas fa-tags"></i> Agregar Categoría
+            </button>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <div class="card-header-top">
+                    <h2 class="card-title">Lista de Productos</h2>
+                    <div class="search-container">
+                        <div class="input-group">
+                            <input type="text" id="search-input" class="form-control" 
+                                   placeholder="Buscar productos..." value="{{ termino_busqueda or '' }}">
+                            <button class="btn btn-outline-secondary" type="button" id="search-button">
+                                <i class="fas fa-search"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card-header-bottom">
+                    <div class="tab-filters">
+                        <div class="tab-filter {% if categoria_activa == 'Todos' %}active{% endif %}" 
+                             data-category="Todos">Todos</div>
+                        {% for categoria in categorias %}
+                        <div class="tab-filter {% if categoria_activa == categoria.nombre %}active{% endif %}" 
+                             data-category="{{ categoria.nombre }}">{{ categoria.nombre }}</div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="table-container">
+                    <table class="table" id="products-table">
+                        <thead>
+                            <tr>
+                                <th>Código</th>
+                                <th>Nombre</th>
+                                <th>Categoría</th>
+                                <th>Precio Venta</th>
+                                <th>Stock Actual</th>
+                                <th>Stock Mínimo</th>
+                                <th>Estado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="products-table-body">
+                            {% if sin_productos %}
+                            <tr>
+                                <td colspan="8" class="text-center">
+                                    <div class="no-products-message">
+                                        <i class="fas fa-box-open"></i>
+                                        <h3>No se encontraron productos</h3>
+                                        <p>
+                                            {% if categoria_activa and categoria_activa != 'Todos' %}
+                                                No hay productos en la categoría "{{ categoria_activa }}"
+                                            {% elif termino_busqueda %}
+                                                No se encontraron resultados para "{{ termino_busqueda }}"
+                                            {% else %}
+                                                No hay productos registrados. Comienza agregando un nuevo producto.
+                                            {% endif %}
+                                        </p>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% else %}
+                                {% for producto in productos %}
+                                <tr>
+                                    <td>{{ producto.codigo or 'SIN CÓDIGO' }}</td>
+                                    <td>{{ producto.nombre or 'SIN NOMBRE' }}</td>
+                                    <td>{{ producto.categoria or 'SIN CATEGORÍA' }}</td>
+                                    <td>${{ producto.precio_venta | round(2) }}</td>
+                                    <td>
+                                        <div>{{ producto.stock_actual }} unidades</div>
+                                        <div class="stock-indicator">
+                                            <div class="stock-level" 
+                                                style="width: {{ producto.stock_porcentaje }}%; 
+                                                background: {% if producto.estado_clase == 'status-danger' %}#ef476f{% elif producto.estado_clase == 'status-warning' %}#ffd166{% else %}#06d6a0{% endif %};">
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>{{ producto.stock_minimo }}</td>
+                                    <td><span class="status {{ producto.estado_clase }}">{{ producto.estado_texto }}</span></td>
+                                    <td>
+                                        <button class="action-btn edit" data-id="{{ producto.id }}">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button class="action-btn delete" data-id="{{ producto.id }}">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para agregar/editar producto -->
+<div class="modal" id="addProductModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title" id="modal-title">Registrar Nuevo Producto</h2>
+            <button type="button" class="close">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="product-form">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label class="form-label">Código de Producto</label>
+                        <input type="text" id="product-code" class="form-control" name="code" placeholder="PRD-001" required readonly style="background-color: #e0e0e0; cursor: not-allowed;">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Nombre</label>
+                        <input type="text" id="product-name" class="form-control" name="name" placeholder="Nombre del producto" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Descripción</label>
+                        <textarea id="product-description" class="form-control textarea-auto" name="description" rows="1" oninput="autoResize(this)" placeholder="Descripción del producto"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Categoría</label>
+                        <select id="product-category" class="form-control form-select" name="category" required>
+                            <option value="">Seleccionar categoría</option>
+                            {% for categoria in categorias %}
+                            <option value="{{ categoria.nombre }}">{{ categoria.nombre }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <!-- Nuevo campo: Impuestos -->
+                    <div class="form-group">
+                        <label class="form-label">Impuestos</label>
+                        <select id="product-tax" class="form-control form-select" name="tax" required>
+                            <option value="0">Ninguno</option>
+                            <option value="18">18%</option>
+                            <option value="personalizado">Personalizado</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Campo oculto para impuesto personalizado -->
+                    <div class="form-group" id="custom-tax-container" style="display: none;">
+                        <label class="form-label">Porcentaje de Impuesto Personalizado (%)</label>
+                        <input type="number" id="product-custom-tax" class="form-control" 
+                               placeholder="0" min="0" step="0.01">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Precio de Compra</label>
+                        <input type="number" id="product-purchase-price" class="form-control" name="purchase_price" placeholder="0.00" min="0" step="0.01" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Porcentaje de Venta (%)</label>
+                        <input type="number" id="product-sale-percentage" class="form-control" 
+                               placeholder="0" min="0" step="0.01" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Precio de Venta</label>
+                        <input type="number" id="product-sale-price" class="form-control" 
+                               name="sale_price" placeholder="0.00" min="0" step="0.01" readonly required style="background-color: #e0e0e0; cursor: not-allowed;">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Cantidad Inicial</label>
+                        <input type="number" id="product-initial-quantity" class="form-control" name="initial_quantity" placeholder="0" min="0" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Stock Mínimo</label>
+                        <input type="number" id="product-min-stock" class="form-control" name="min_stock" placeholder="0" min="0" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Stock Máximo</label>
+                        <input type="number" id="product-max-stock" class="form-control" name="max_stock" placeholder="0" min="0" required>
+                    </div>
+                </div>
+                <div style="margin-top: 25px;">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> Guardar Producto
+                    </button>
+                    <button type="button" class="btn btn-secondary" id="cancel-form" style="margin-left: 10px;">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+
+<!-- Modal para agregar/editar categorías -->
+<div class="modal" id="addCategoryModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title" id="category-modal-title">Gestión de Categorías</h2>
+            <button type="button" class="close" id="closeCategoryModal">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="category-form-grid">
+                <div>
+                    <input type="text" id="category-name" class="form-control" placeholder="Nombre de la categoría" required>
+                    <small id="category-error" class="text-danger" style="display: none;">El nombre es obligatorio</small>
+                </div>
+                <button class="btn btn-primary" id="add-category-btn">
+                    <i class="fas fa-plus"></i> Agregar
+                </button>
+            </div>
+            
+            <ul class="category-list" id="categories-list">
+                {% for categoria in categorias %}
+                <li class="category-item" data-id="{{ categoria.id }}">
+                    <span class="category-name">{{ categoria.nombre }}</span>
+                    <div class="category-actions">
+                        <button class="action-btn edit-category" data-id="{{ categoria.id }}">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="action-btn delete-category" data-id="{{ categoria.id }}">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<!-- SweetAlert2 JS -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<!-- Notyf JS para notificaciones -->
+<script src="https://cdn.jsdelivr.net/npm/notyf@3/notyf.min.js"></script>
+<script src="/static/js/productos.js"></script>
+
+
+{% endblock %}

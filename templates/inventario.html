@@ -1,0 +1,247 @@
+{% extends "home.html" %}
+
+{% block title %}Gestión de Inventario{% endblock %}
+
+{% block styles %}
+<link rel="stylesheet" href="/static/css/inventario.css">
+<style>
+    /* Estilos para el modal */
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.6);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+        opacity: 0;
+        visibility: hidden;
+        transition: all 0.3s ease;
+    }
+    
+    .modal-overlay.active {
+        opacity: 1;
+        visibility: visible;
+    }
+    
+    .modal-content {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+        width: 90%;
+        max-width: 600px;
+        max-height: 90vh;
+        overflow-y: auto;
+        transform: translateY(30px);
+        transition: all 0.3s ease;
+    }
+    
+    .modal-overlay.active .modal-content {
+        transform: translateY(0);
+    }
+    
+    .modal-header {
+        padding: 18px 25px;
+        border-bottom: 1px solid #e9ecef;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background-color: #f9fafc;
+    }
+    
+    .modal-title {
+        font-size: 1.3rem;
+        font-weight: 600;
+        color: #212529;
+    }
+    
+    .modal-close {
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        cursor: pointer;
+        color: #6c757d;
+        transition: all 0.2s ease;
+    }
+    
+    .modal-close:hover {
+        color: #212529;
+        transform: rotate(90deg);
+    }
+    
+    .modal-body {
+        padding: 25px;
+    }
+    
+    /* Botón para abrir el modal */
+    .btn-open-modal {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 13px 26px;
+        border-radius: 12px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        border: none;
+        font-size: 1rem;
+        gap: 10px;
+        box-shadow: 0 4px 12px rgba(67, 97, 238, 0.2);
+        background: #4361ee;
+        color: white;
+        margin: 15px 0;
+    }
+    
+    .btn-open-modal:hover {
+        background: #3a56d4;
+        transform: translateY(-2px);
+        box-shadow: 0 6px 15px rgba(67, 97, 238, 0.3);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+    <!-- Sección de Inventario -->
+    <div class="section active" id="inventory">
+        <h1 class="section-title">
+            <i class="fas fa-warehouse"></i>
+            Control de Inventario
+        </h1>
+
+        <!-- Alertas de inventario -->
+        <div id="alert-container" class="alert alert-danger" style="display: none;">
+            <i class="fas fa-exclamation-triangle alert-icon"></i>
+            <div class="alert-content">
+                <h4>¡Atención! Productos con bajo stock</h4>
+                <p id="alert-text">Cargando información...</p>
+            </div>
+        </div>
+
+        <!-- Estadísticas de inventario -->
+        <div class="stats-grid" id="stats-container">
+            <!-- Estadísticas se cargarán dinámicamente -->
+        </div>
+
+        <!-- Botón para abrir el modal de movimiento -->
+        <button class="btn-open-modal" id="open-movement-modal">
+            <i class="fas fa-plus-circle"></i> Registrar Nuevo Movimiento
+        </button>
+
+        <!-- Modal para registrar movimiento -->
+        <div class="modal-overlay" id="movement-modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 class="modal-title">Registrar Movimiento</h3>
+                    <button class="modal-close" id="close-movement-modal">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <form id="inventory-form">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label class="form-label">Producto</label>
+                                <select class="form-control form-select" id="product-select" required>
+                                    <option value="">Seleccionar producto</option>
+                                    <!-- Las opciones se cargarán dinámicamente -->
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Tipo de Movimiento</label>
+                                <select class="form-control form-select" id="movement-type" required>
+                                    <option value="">Seleccionar tipo</option>
+                                    <option value="Entrada">Entrada</option>
+                                    <option value="Salida">Salida</option>
+                                    <option value="Ajuste">Ajuste de inventario</option>
+                                    <option value="Transferencia">Transferencia</option>
+                                    <option value="Devolución">Devolución</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Cantidad</label>
+                                <input type="number" class="form-control" id="movement-quantity" placeholder="0" min="1" required>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Motivo</label>
+                            <textarea class="form-control" id="movement-reason" rows="3" placeholder="Descripción del motivo..." required></textarea>
+                        </div>
+                        <div style="margin-top: 25px; display: flex; gap: 10px; justify-content: flex-end;">
+                            <button type="button" class="btn btn-outline" id="cancel-movement-modal">
+                                <i class="fas fa-times"></i> Cancelar
+                            </button>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-check-circle"></i> Registrar Movimiento
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Histórico de movimientos -->
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">Histórico de Movimientos</h2>
+                <div class="tab-filters" id="movement-filters">
+                    <div class="tab-filter active" data-filter="all">Todos</div>
+                    <div class="tab-filter" data-filter="Entrada">Entradas</div>
+                    <div class="tab-filter" data-filter="Salida">Salidas</div>
+                    <div class="tab-filter" data-filter="last7">Últimos 7 días</div>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="history-container" id="history-container">
+                    <!-- Los movimientos se cargarán dinámicamente -->
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/inventario.js"></script>
+<script>
+    // Manejar el modal de movimiento
+    const movementModal = document.getElementById('movement-modal');
+    const openModalBtn = document.getElementById('open-movement-modal');
+    const closeModalBtn = document.getElementById('close-movement-modal');
+    const cancelModalBtn = document.getElementById('cancel-movement-modal');
+    
+    function openMovementModal() {
+        movementModal.classList.add('active');
+        document.body.style.overflow = 'hidden'; // Bloquear scroll del fondo
+    }
+    
+    function closeMovementModal() {
+        movementModal.classList.remove('active');
+        document.body.style.overflow = ''; // Restaurar scroll
+    }
+    
+    openModalBtn.addEventListener('click', openMovementModal);
+    closeModalBtn.addEventListener('click', closeMovementModal);
+    cancelModalBtn.addEventListener('click', closeMovementModal);
+    
+    // Cerrar modal al hacer clic fuera del contenido
+    movementModal.addEventListener('click', (e) => {
+        if (e.target === movementModal) {
+            closeMovementModal();
+        }
+    });
+    
+    // Cerrar modal con tecla ESC
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && movementModal.classList.contains('active')) {
+            closeMovementModal();
+        }
+    });
+    
+    // Manejar envío de formulario (cierre del modal)
+    document.getElementById('inventory-form').addEventListener('submit', () => {
+        setTimeout(closeMovementModal, 1000); // Cerrar después de 1 segundo
+    });
+</script>
+{% endblock %}

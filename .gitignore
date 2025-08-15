@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+
+# Virtualenv
+venv/
+.env
+.env.*
+
+# IDEs / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Databases
+*.sqlite3
+*.db
+
+# Logs
+*.log
+
+# node
+node_modules/
+
+# instance / uploads / secrets
+instance/
+uploads/

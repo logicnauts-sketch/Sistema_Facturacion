@@ -1,0 +1,334 @@
+{% extends "home.html" %}
+
+{% block title %}Gestión de Clientes{% endblock %}
+
+    {% block styles %}
+    <link rel="stylesheet" href="/static/css/librodiario.css">
+    {% endblock %}
+    
+
+
+{% block content %}
+    <div class="container">
+        <!-- Header con título y botones de acción -->
+        <div class="page-header">
+            <div class="page-title">
+                <div class="logo">
+                    <i class="fas fa-book"></i>
+                </div>
+                <div class="app-name">
+                    <h1>Libro Diario Contable</h1>
+                    <p>Registro cronológico de transacciones financieras</p>
+                </div>
+            </div>
+            <div class="header-actions">
+                <button class="action-btn" id="exportBtn" title="Exportar datos">
+                    <i class="fas fa-file-export"></i>
+                </button>
+                <button class="action-btn" id="refreshBtn" title="Actualizar datos">
+                    <i class="fas fa-sync-alt"></i>
+                </button>
+                <button class="action-btn" id="newEntryBtn" title="Nuevo asiento">
+                    <i class="fas fa-plus"></i>
+                </button>
+            </div>
+        </div>
+        
+        <!-- Toggle para filtros -->
+        <div class="filters-toggle">
+            <button class="toggle-btn" id="toggleFiltersBtn">
+                <i class="fas fa-filter"></i> Mostrar Filtros
+            </button>
+        </div>
+        
+        <!-- Filtros (inicialmente ocultos) -->
+        <div class="filters" id="filtersContainer">
+            <div class="filters-header">
+                <h3>Filtros de Asientos</h3>
+                <button class="btn">
+                    <i class="fas fa-filter"></i> Aplicar Filtros
+                </button>
+            </div>
+            
+            <div class="filter-row">
+                <div class="filter-group">
+                    <label>Fecha</label>
+                    <div class="date-range">
+                        <input type="date" class="w-full">
+                        <span>a</span>
+                        <input type="date" class="w-full">
+                    </div>
+                </div>
+                <div class="filter-group">
+                    <label>Cuenta</label>
+                    <select>
+                        <option>Todas las cuentas</option>
+                        <option>Caja</option>
+                        <option>Bancos</option>
+                        <option>Cuentas por Cobrar</option>
+                        <option>Inventario</option>
+                        <option>Activos Fijos</option>
+                        <option>Cuentas por Pagar</option>
+                        <option>Préstamos</option>
+                        <option>Capital</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>Estado</label>
+                    <select>
+                        <option>Todos los estados</option>
+                        <option>Pendiente</option>
+                        <option>Aprobado</option>
+                        <option>Rechazado</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>Descripción</label>
+                    <input type="text" placeholder="Buscar por descripción...">
+                </div>
+            </div>
+        </div>
+        
+        <!-- Entradas del diario -->
+        <div class="journal-entries">
+            <div class="entries-header">
+                <h2><i class="fas fa-file-invoice"></i> Asientos Contables</h2>
+                <div class="entries-info">
+                    <span><i class="fas fa-info-circle"></i> 3 asientos encontrados</span>
+                </div>
+            </div>
+            
+            <!-- Asiento 1 -->
+            <div class="journal-entry">
+                <div class="entry-header">
+                    <div>
+                        <span class="entry-id">#AS-001</span>
+                        <span class="entry-date">25/08/2023</span>
+                        <span class="status-badge status-approved">Aprobado</span>
+                    </div>
+                    <div>
+                        <span class="entry-tag">Comprobante #001</span>
+                    </div>
+                </div>
+                
+                <div class="entry-description">
+                    Venta de mercancía a crédito - Factura #2023-001
+                </div>
+                
+                <table class="entry-table">
+                    <thead>
+                        <tr>
+                            <th>Cuenta</th>
+                            <th>Descripción</th>
+                            <th>Débito</th>
+                            <th>Crédito</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="account">Cuentas por Cobrar</td>
+                            <td class="detail">Cliente: Empresa ABC</td>
+                            <td class="debit">RD$ 25,000.00</td>
+                            <td class="credit"></td>
+                        </tr>
+                        <tr>
+                            <td class="account">Ventas</td>
+                            <td class="detail">Venta de productos</td>
+                            <td class="debit"></td>
+                            <td class="credit">RD$ 21,186.44</td>
+                        </tr>
+                        <tr>
+                            <td class="account">ITBIS por Cobrar</td>
+                            <td class="detail">ITBIS 18%</td>
+                            <td class="debit"></td>
+                            <td class="credit">RD$ 3,813.56</td>
+                        </tr>
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td colspan="2" class="total-label">Total:</td>
+                            <td class="debit">RD$ 25,000.00</td>
+                            <td class="credit">RD$ 25,000.00</td>
+                        </tr>
+                    </tfoot>
+                </table>
+                
+                <div class="entry-actions">
+                    <div class="entry-action-btn edit-btn" title="Editar">
+                        <i class="fas fa-edit"></i>
+                    </div>
+                    <div class="entry-action-btn print-btn" title="Imprimir">
+                        <i class="fas fa-print"></i>
+                    </div>
+                    <div class="entry-action-btn delete-btn" title="Eliminar">
+                        <i class="fas fa-trash-alt"></i>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Asiento 2 -->
+            <div class="journal-entry">
+                <div class="entry-header">
+                    <div>
+                        <span class="entry-id">#AS-002</span>
+                        <span class="entry-date">24/08/2023</span>
+                        <span class="status-badge status-approved">Aprobado</span>
+                    </div>
+                    <div>
+                        <span class="entry-tag">Comprobante #002</span>
+                    </div>
+                </div>
+                
+                <div class="entry-description">
+                    Pago de servicios públicos - Agosto 2023
+                </div>
+                
+                <table class="entry-table">
+                    <thead>
+                        <tr>
+                            <th>Cuenta</th>
+                            <th>Descripción</th>
+                            <th>Débito</th>
+                            <th>Crédito</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="account">Gastos de Servicios</td>
+                            <td class="detail">Electricidad y agua</td>
+                            <td class="debit">RD$ 12,400.00</td>
+                            <td class="credit"></td>
+                        </tr>
+                        <tr>
+                            <td class="account">ITBIS por Pagar</td>
+                            <td class="detail">ITBIS 18%</td>
+                            <td class="debit">RD$ 1,892.37</td>
+                            <td class="credit"></td>
+                        </tr>
+                        <tr>
+                            <td class="account">Bancos</td>
+                            <td class="detail">Banco Popular #1234</td>
+                            <td class="debit"></td>
+                            <td class="credit">RD$ 14,292.37</td>
+                        </tr>
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td colspan="2" class="total-label">Total:</td>
+                            <td class="debit">RD$ 14,292.37</td>
+                            <td class="credit">RD$ 14,292.37</td>
+                        </tr>
+                    </tfoot>
+                </table>
+                
+                <div class="entry-actions">
+                    <div class="entry-action-btn edit-btn" title="Editar">
+                        <i class="fas fa-edit"></i>
+                    </div>
+                    <div class="entry-action-btn print-btn" title="Imprimir">
+                        <i class="fas fa-print"></i>
+                    </div>
+                    <div class="entry-action-btn delete-btn" title="Eliminar">
+                        <i class="fas fa-trash-alt"></i>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Asiento 3 -->
+            <div class="journal-entry">
+                <div class="entry-header">
+                    <div>
+                        <span class="entry-id">#AS-003</span>
+                        <span class="entry-date">20/08/2023</span>
+                        <span class="status-badge status-pending">Pendiente</span>
+                    </div>
+                    <div>
+                        <span class="entry-tag">Comprobante #003</span>
+                    </div>
+                </div>
+                
+                <div class="entry-description">
+                    Compra de equipo de oficina - Proveedor: Suministros RD
+                </div>
+                
+                <table class="entry-table">
+                    <thead>
+                        <tr>
+                            <th>Cuenta</th>
+                            <th>Descripción</th>
+                            <th>Débito</th>
+                            <th>Crédito</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="account">Equipos de Oficina</td>
+                            <td class="detail">Computadoras y mobiliario</td>
+                            <td class="debit">RD$ 85,000.00</td>
+                            <td class="credit"></td>
+                        </tr>
+                        <tr>
+                            <td class="account">ITBIS por Pagar</td>
+                            <td class="detail">ITBIS 18%</td>
+                            <td class="debit">RD$ 12,966.10</td>
+                            <td class="credit"></td>
+                        </tr>
+                        <tr>
+                            <td class="account">Cuentas por Pagar</td>
+                            <td class="detail">Proveedor: Suministros RD</td>
+                            <td class="debit"></td>
+                            <td class="credit">RD$ 97,966.10</td>
+                        </tr>
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td colspan="2" class="total-label">Total:</td>
+                            <td class="debit">RD$ 97,966.10</td>
+                            <td class="credit">RD$ 97,966.10</td>
+                        </tr>
+                    </tfoot>
+                </table>
+                
+                <div class="entry-actions">
+                    <div class="entry-action-btn edit-btn" title="Editar">
+                        <i class="fas fa-edit"></i>
+                    </div>
+                    <div class="entry-action-btn print-btn" title="Imprimir">
+                        <i class="fas fa-print"></i>
+                    </div>
+                    <div class="entry-action-btn delete-btn" title="Eliminar">
+                        <i class="fas fa-trash-alt"></i>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Paginación -->
+            <div class="pagination">
+                <div class="page-btn">
+                    <i class="fas fa-chevron-left"></i>
+                </div>
+                <div class="page-btn active">1</div>
+                <div class="page-btn">2</div>
+                <div class="page-btn">3</div>
+                <div class="page-btn">
+                    <i class="fas fa-chevron-right"></i>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Footer -->
+        <div class="footer">
+            <p>© 2023 Sistema Contable Profesional | Todos los derechos reservados</p>
+        </div>
+    </div>
+    
+    <!-- Botón flotante para nuevo asiento -->
+    <div class="floating-btn" id="floatingBtn">
+        <i class="fas fa-plus"></i>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/librodiario.js"></script>
+
+{% endblock %}

@@ -1,0 +1,84 @@
+<div class="factura" id="factura-print">
+    <div class="factura-header">
+        <div class="logo">
+            <div class="logo-placeholder">LOGO</div>
+        </div>
+        <div class="empresa-info">
+            <h2>{{ empresa.nombre }}</h2>
+            <p>RNC: {{ empresa.rnc }}</p>
+            <p>{{ empresa.direccion }}</p>
+            <p>Tel: {{ empresa.telefono }} | Email: {{ empresa.email }}</p>
+        </div>
+    </div>
+    
+    <div class="factura-title">
+        <h1>FACTURA</h1>
+        <div class="factura-meta">
+            <p><strong>No:</strong> {{ factura.numero }}</p>
+            <p><strong>NCF:</strong> {{ factura.ncf }}</p>
+            <p><strong>Fecha:</strong> {{ factura.fecha }}</p>
+            <p><strong>Hora:</strong> {{ factura.hora }}</p>
+        </div>
+    </div>
+    
+    <div class="cliente-info">
+        <h3>Datos del Cliente</h3>
+        <p><strong>Nombre:</strong> {{ factura.cliente.nombre }}</p>
+        <p><strong>{{ 'RNC' if factura.cliente.rnc else 'Cédula' }}:</strong> {{ factura.cliente.rnc or factura.cliente.cedula }}</p>
+    </div>
+    
+    <table class="factura-detalle">
+        <thead>
+            <tr>
+                <th>Cantidad</th>
+                <th>Descripción</th>
+                <th>Precio Unitario</th>
+                <th>ITBIS (18%)</th>
+                <th>Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in factura.items %}
+            <tr>
+                <td>{{ item.cantidad }}</td>
+                <td>{{ item.descripcion }}</td>
+                <td>RD$ {{ item.precio_unitario | number_format(2) }}</td>
+                <td>RD$ {{ item.itbis | number_format(2) }}</td>
+                <td>RD$ {{ item.total_linea | number_format(2) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    
+    <div class="factura-totales">
+        <div class="total-item">
+            <span>Subtotal:</span>
+            <span>RD$ {{ factura.subtotal | number_format(2) }}</span>
+        </div>
+        <div class="total-item">
+            <span>ITBIS (18%):</span>
+            <span>RD$ {{ factura.itbis_total | number_format(2) }}</span>
+        </div>
+        <div class="total-item">
+            <span>Total General:</span>
+            <span>RD$ {{ factura.total_general | number_format(2) }}</span>
+        </div>
+        <div class="total-item">
+            <span>Monto Recibido:</span>
+            <span>RD$ {{ factura.monto_recibido | number_format(2) }}</span>
+        </div>
+        <div class="total-item">
+            <span>Cambio:</span>
+            <span>RD$ {{ factura.cambio | number_format(2) }}</span>
+        </div>
+        <div class="total-item">
+            <span>Forma de Pago:</span>
+            <span>{{ factura.tipo_pago | capitalize }}</span>
+        </div>
+    </div>
+    
+    <div class="factura-footer">
+        <p>¡Gracias por su compra!</p>
+        <p>Esta factura cumple con los requisitos de la DGII según la Normativa 06-2020</p>
+    </div>
+</div>

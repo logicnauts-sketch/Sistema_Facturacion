@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Facturación - Iniciar Sesión</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/static/css/login.css">
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-left">
+            <div class="bubbles" id="bubbles"></div>
+            <div class="main-logo">
+                <div class="logo-circle">
+                    <i class="fas fa-file-invoice-dollar"></i>
+                </div>
+                <div class="logo-text">
+                    <h1>FACTURAPRO</h1>
+                </div>
+            </div>
+        </div>
+        
+        <div class="login-right">
+            <div class="login-header">
+                <h2>Iniciar Sesión</h2>
+                <p>Accede a tu panel de facturación</p>
+            </div>
+            
+            <form class="login-form" id="login-form">
+                <div class="form-group">
+                    <label for="username">Usuario</label>
+                    <div class="input-with-icon">
+                        <i class="fas fa-user"></i>
+                        <input type="text" id="username" name="username" placeholder="Ingresa tu usuario" required>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">Contraseña</label>
+                    <div class="input-with-icon">
+                        <i class="fas fa-lock"></i>
+                        <input type="password" id="password" name="password" placeholder="Ingresa tu contraseña" required>
+                    </div>
+                </div>
+                
+                <div class="remember-forgot">
+                    <div class="remember">
+                        <input type="checkbox" id="remember">
+                        <label for="remember">Recordar sesión</label>
+                    </div>
+                </div>
+                
+                <button type="submit" class="btn-login">Ingresar al sistema</button>
+            </form>
+            
+            <div id="error-message" class="error-message"></div>
+            
+            <div class="login-footer">
+                <p>© 2023 FacturaPro - Sistema de Facturación</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/login.js"></script>
+</body>
+</html>

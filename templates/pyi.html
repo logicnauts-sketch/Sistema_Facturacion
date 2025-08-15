@@ -1,0 +1,1153 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inventario Pro | Sistema de Gestión</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/notyf@3/notyf.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #4361ee;
+            --primary-dark: #3a56d4;
+            --secondary: #7209b7;
+            --success: #06d6a0;
+            --warning: #ffd166;
+            --danger: #ef476f;
+            --light: #f8f9fa;
+            --dark: #212529;
+            --gray: #6c757d;
+            --light-gray: #e9ecef;
+            --border-radius: 12px;
+            --shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            --transition: all 0.3s ease;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: #f5f7fb;
+            color: var(--dark);
+            display: flex;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 260px;
+            background: linear-gradient(180deg, var(--primary), var(--secondary));
+            color: white;
+            height: 100vh;
+            position: fixed;
+            padding: 20px 0;
+            transition: var(--transition);
+            z-index: 100;
+        }
+
+        .logo-container {
+            padding: 0 20px 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            margin-bottom: 20px;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .logo i {
+            background: white;
+            color: var(--primary);
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .nav-menu {
+            list-style: none;
+            padding: 0 15px;
+        }
+
+        .nav-item {
+            margin-bottom: 5px;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            padding: 12px 15px;
+            color: rgba(255, 255, 255, 0.9);
+            text-decoration: none;
+            border-radius: 8px;
+            transition: var(--transition);
+            font-weight: 500;
+        }
+
+        .nav-link:hover, .nav-link.active {
+            background: rgba(255, 255, 255, 0.15);
+            color: white;
+        }
+
+        .nav-link i {
+            margin-right: 12px;
+            font-size: 1.1rem;
+            width: 24px;
+            text-align: center;
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            margin-left: 260px;
+            transition: var(--transition);
+        }
+
+        /* Topbar */
+        .topbar {
+            background: white;
+            padding: 15px 30px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: var(--shadow);
+            position: sticky;
+            top: 0;
+            z-index: 99;
+        }
+
+        .search-container {
+            position: relative;
+            flex: 1;
+            max-width: 500px;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 10px 15px 10px 40px;
+            border: 1px solid var(--light-gray);
+            border-radius: 8px;
+            font-size: 0.95rem;
+            transition: var(--transition);
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.15);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--gray);
+        }
+
+        .user-profile {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .user-info {
+            text-align: right;
+        }
+
+        .user-name {
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+
+        .user-role {
+            font-size: 0.8rem;
+            color: var(--gray);
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(45deg, var(--primary), var(--secondary));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+
+        /* Content Container */
+        .content-container {
+            padding: 30px;
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            margin-bottom: 25px;
+            color: var(--dark);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section-title i {
+            background: var(--light);
+            color: var(--primary);
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Cards */
+        .card {
+            background: white;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            margin-bottom: 25px;
+            overflow: hidden;
+        }
+
+        .card-header {
+            padding: 18px 25px;
+            border-bottom: 1px solid var(--light-gray);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .card-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--dark);
+        }
+
+        .card-body {
+            padding: 25px;
+        }
+
+        /* Form Styles */
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 18px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: var(--dark);
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid var(--light-gray);
+            border-radius: 8px;
+            font-size: 0.95rem;
+            transition: var(--transition);
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.15);
+        }
+
+        .form-select {
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 15px center;
+            background-size: 16px;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition);
+            border: none;
+            font-size: 0.95rem;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--light-gray);
+            color: var(--dark);
+        }
+
+        .btn-outline:hover {
+            background: var(--light);
+        }
+
+        .btn-sm {
+            padding: 8px 15px;
+            font-size: 0.85rem;
+        }
+
+        /* Table Styles */
+        .table-container {
+            overflow-x: auto;
+        }
+
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 800px;
+        }
+
+        .table th {
+            background: var(--light);
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+            color: var(--gray);
+            border-bottom: 1px solid var(--light-gray);
+        }
+
+        .table td {
+            padding: 12px 15px;
+            border-bottom: 1px solid var(--light-gray);
+            color: var(--dark);
+        }
+
+        .table tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        .table tbody tr:hover {
+            background: rgba(67, 97, 238, 0.03);
+        }
+
+        .status {
+            display: inline-flex;
+            align-items: center;
+            padding: 5px 12px;
+            border-radius: 50px;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+
+        .status-normal {
+            background: rgba(6, 214, 160, 0.15);
+            color: #06a17a;
+        }
+
+        .status-warning {
+            background: rgba(255, 209, 102, 0.2);
+            color: #d4a325;
+        }
+
+        .status-danger {
+            background: rgba(239, 71, 111, 0.15);
+            color: #d6305f;
+        }
+
+        .action-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 34px;
+            height: 34px;
+            border-radius: 8px;
+            background: transparent;
+            color: var(--gray);
+            border: none;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .action-btn:hover {
+            background: var(--light);
+        }
+
+        .action-btn.edit:hover {
+            color: var(--primary);
+        }
+
+        .action-btn.delete:hover {
+            color: var(--danger);
+        }
+
+        /* QR Container */
+        .qr-container {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-top: 10px;
+        }
+
+        .qr-preview {
+            width: 120px;
+            height: 120px;
+            background: var(--light);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px dashed var(--light-gray);
+        }
+
+        .qr-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        /* Stock Status */
+        .stock-indicator {
+            height: 6px;
+            border-radius: 3px;
+            background: var(--light-gray);
+            position: relative;
+            overflow: hidden;
+            margin-top: 5px;
+        }
+
+        .stock-level {
+            position: absolute;
+            height: 100%;
+            border-radius: 3px;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 992px) {
+            .sidebar {
+                transform: translateX(-100%);
+            }
+            
+            .sidebar.active {
+                transform: translateX(0);
+            }
+            
+            .main-content {
+                margin-left: 0;
+            }
+            
+            .menu-toggle {
+                display: block;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .content-container {
+                padding: 20px 15px;
+            }
+            
+            .topbar {
+                padding: 15px;
+            }
+            
+            .user-info {
+                display: none;
+            }
+            
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Mobile Menu Toggle */
+        .menu-toggle {
+            display: none;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            color: var(--dark);
+            cursor: pointer;
+            margin-right: 15px;
+        }
+
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 99;
+            display: none;
+        }
+
+        /* Hidden sections */
+        .section {
+            display: none;
+        }
+        
+        .section.active {
+            display: block;
+        }
+
+        /* Tab filters */
+        .tab-filters {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .tab-filter {
+            padding: 8px 16px;
+            border-radius: 8px;
+            background: var(--light);
+            border: 1px solid var(--light-gray);
+            color: var(--gray);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .tab-filter.active, .tab-filter:hover {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        /* Inventory History */
+        .history-item {
+            display: flex;
+            padding: 15px 0;
+            border-bottom: 1px solid var(--light-gray);
+        }
+
+        .history-item:last-child {
+            border-bottom: none;
+        }
+
+        .history-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+            flex-shrink: 0;
+        }
+
+        .history-icon.entry {
+            background: rgba(6, 214, 160, 0.15);
+            color: var(--success);
+        }
+
+        .history-icon.exit {
+            background: rgba(239, 71, 111, 0.15);
+            color: var(--danger);
+        }
+
+        .history-content {
+            flex: 1;
+        }
+
+        .history-title {
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .history-details {
+            display: flex;
+            gap: 15px;
+            color: var(--gray);
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="logo-container">
+            <div class="logo">
+                <i class="fas fa-boxes"></i>
+                <span>Inventario Pro</span>
+            </div>
+        </div>
+        <ul class="nav-menu">
+            <li class="nav-item">
+                <a href="#" class="nav-link active" data-section="dashboard">
+                    <i class="fas fa-home"></i>
+                    <span>Dashboard</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="#" class="nav-link" data-section="products">
+                    <i class="fas fa-box"></i>
+                    <span>Productos</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="#" class="nav-link" data-section="inventory">
+                    <i class="fas fa-warehouse"></i>
+                    <span>Inventario</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="#" class="nav-link">
+                    <i class="fas fa-shopping-cart"></i>
+                    <span>Ventas</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="#" class="nav-link">
+                    <i class="fas fa-users"></i>
+                    <span>Clientes</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="#" class="nav-link">
+                    <i class="fas fa-truck"></i>
+                    <span>Proveedores</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="#" class="nav-link">
+                    <i class="fas fa-chart-line"></i>
+                    <span>Reportes</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="#" class="nav-link">
+                    <i class="fas fa-cog"></i>
+                    <span>Configuración</span>
+                </a>
+            </li>
+        </ul>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Topbar -->
+        <div class="topbar">
+            <button class="menu-toggle">
+                <i class="fas fa-bars"></i>
+            </button>
+            <div class="search-container">
+                <i class="fas fa-search search-icon"></i>
+                <input type="text" class="search-input" placeholder="Buscar productos, códigos...">
+            </div>
+            <div class="user-profile">
+                <div class="user-info">
+                    <div class="user-name">María Rodríguez</div>
+                    <div class="user-role">Administradora</div>
+                </div>
+                <div class="user-avatar">MR</div>
+            </div>
+        </div>
+
+        <!-- Content Container -->
+        <div class="content-container">
+            <!-- Dashboard Section -->
+            <div class="section active" id="dashboard">
+                <h1 class="section-title">
+                    <i class="fas fa-home"></i>
+                    Dashboard
+                </h1>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">Resumen de Inventario</h2>
+                    </div>
+                    <div class="card-body">
+                        <div class="stats-grid">
+                            <!-- Stats will be added here -->
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">Productos con bajo stock</h2>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-container">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Código</th>
+                                        <th>Producto</th>
+                                        <th>Categoría</th>
+                                        <th>Stock Actual</th>
+                                        <th>Stock Mínimo</th>
+                                        <th>Estado</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>PRD-00123</td>
+                                        <td>Laptop HP ProBook</td>
+                                        <td>Electrónicos</td>
+                                        <td>3</td>
+                                        <td>5</td>
+                                        <td><span class="status status-warning">Bajo stock</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td>PRD-00456</td>
+                                        <td>Mouse Inalámbrico Logitech</td>
+                                        <td>Accesorios</td>
+                                        <td>2</td>
+                                        <td>10</td>
+                                        <td><span class="status status-danger">Muy bajo</span></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Product Registration Section -->
+            <div class="section" id="products">
+                <h1 class="section-title">
+                    <i class="fas fa-box"></i>
+                    Gestión de Productos
+                </h1>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">Registrar Nuevo Producto</h2>
+                    </div>
+                    <div class="card-body">
+                        <form id="product-form">
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label class="form-label">Código de Producto</label>
+                                    <input type="text" class="form-control" placeholder="PRD-001" required>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Nombre</label>
+                                    <input type="text" class="form-control" placeholder="Nombre del producto" required>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Descripción</label>
+                                    <textarea class="form-control" rows="2" placeholder="Descripción del producto"></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Categoría</label>
+                                    <select class="form-control form-select" required>
+                                        <option value="">Seleccionar categoría</option>
+                                        <option>Electrónicos</option>
+                                        <option>Ropa</option>
+                                        <option>Alimentos</option>
+                                        <option>Muebles</option>
+                                        <option>Juguetes</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Precio de Compra</label>
+                                    <input type="number" class="form-control" placeholder="0.00" min="0" step="0.01" required>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Precio de Venta</label>
+                                    <input type="number" class="form-control" placeholder="0.00" min="0" step="0.01" required>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Cantidad Inicial</label>
+                                    <input type="number" class="form-control" placeholder="0" min="0" required>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Stock Mínimo</label>
+                                    <input type="number" class="form-control" placeholder="0" min="0" required>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Stock Máximo</label>
+                                    <input type="number" class="form-control" placeholder="0" min="0" required>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Código QR (opcional)</label>
+                                <div class="qr-container">
+                                    <div class="qr-preview">
+                                        <i class="fas fa-qrcode" style="font-size: 3rem; color: #ccc;"></i>
+                                    </div>
+                                    <div class="qr-actions">
+                                        <button type="button" class="btn btn-outline">
+                                            <i class="fas fa-upload"></i> Subir QR
+                                        </button>
+                                        <button type="button" class="btn btn-outline">
+                                            <i class="fas fa-sync"></i> Generar QR
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div style="margin-top: 25px;">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save"></i> Guardar Producto
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">Lista de Productos</h2>
+                        <div class="tab-filters">
+                            <div class="tab-filter active">Todos</div>
+                            <div class="tab-filter">Electrónicos</div>
+                            <div class="tab-filter">Ropa</div>
+                            <div class="tab-filter">Alimentos</div>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-container">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Código</th>
+                                        <th>Nombre</th>
+                                        <th>Categoría</th>
+                                        <th>Precio Venta</th>
+                                        <th>Stock Actual</th>
+                                        <th>Stock Mínimo</th>
+                                        <th>Estado</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>PRD-00123</td>
+                                        <td>Laptop HP ProBook</td>
+                                        <td>Electrónicos</td>
+                                        <td>$1,250.00</td>
+                                        <td>
+                                            <div>12 unidades</div>
+                                            <div class="stock-indicator">
+                                                <div class="stock-level" style="width: 80%; background: var(--success);"></div>
+                                            </div>
+                                        </td>
+                                        <td>5</td>
+                                        <td><span class="status status-normal">Normal</span></td>
+                                        <td>
+                                            <button class="action-btn edit">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button class="action-btn delete">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>PRD-00456</td>
+                                        <td>Mouse Inalámbrico Logitech</td>
+                                        <td>Accesorios</td>
+                                        <td>$35.00</td>
+                                        <td>
+                                            <div>2 unidades</div>
+                                            <div class="stock-indicator">
+                                                <div class="stock-level" style="width: 10%; background: var(--danger);"></div>
+                                            </div>
+                                        </td>
+                                        <td>10</td>
+                                        <td><span class="status status-danger">Muy bajo</span></td>
+                                        <td>
+                                            <button class="action-btn edit">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button class="action-btn delete">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>PRD-00789</td>
+                                        <td>Teclado Mecánico RGB</td>
+                                        <td>Accesorios</td>
+                                        <td>$75.00</td>
+                                        <td>
+                                            <div>8 unidades</div>
+                                            <div class="stock-indicator">
+                                                <div class="stock-level" style="width: 53%; background: var(--warning);"></div>
+                                            </div>
+                                        </td>
+                                        <td>15</td>
+                                        <td><span class="status status-warning">Bajo stock</span></td>
+                                        <td>
+                                            <button class="action-btn edit">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button class="action-btn delete">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Inventory Control Section -->
+            <div class="section" id="inventory">
+                <h1 class="section-title">
+                    <i class="fas fa-warehouse"></i>
+                    Control de Inventario
+                </h1>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">Registrar Movimiento</h2>
+                    </div>
+                    <div class="card-body">
+                        <form id="inventory-form">
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label class="form-label">Producto</label>
+                                    <select class="form-control form-select" required>
+                                        <option value="">Seleccionar producto</option>
+                                        <option>Laptop HP ProBook (PRD-00123)</option>
+                                        <option>Mouse Inalámbrico Logitech (PRD-00456)</option>
+                                        <option>Teclado Mecánico RGB (PRD-00789)</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Tipo de Movimiento</label>
+                                    <select class="form-control form-select" required>
+                                        <option value="">Seleccionar tipo</option>
+                                        <option>Entrada</option>
+                                        <option>Salida</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Cantidad</label>
+                                    <input type="number" class="form-control" placeholder="0" min="1" required>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Motivo</label>
+                                <textarea class="form-control" rows="3" placeholder="Descripción del motivo..." required></textarea>
+                            </div>
+                            <div style="margin-top: 25px;">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-check-circle"></i> Registrar Movimiento
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">Histórico de Movimientos</h2>
+                    </div>
+                    <div class="card-body">
+                        <div class="history-item">
+                            <div class="history-icon entry">
+                                <i class="fas fa-arrow-down"></i>
+                            </div>
+                            <div class="history-content">
+                                <div class="history-title">Entrada de productos</div>
+                                <div class="history-details">
+                                    <div><strong>Producto:</strong> Laptop HP ProBook (PRD-00123)</div>
+                                    <div><strong>Cantidad:</strong> 10 unidades</div>
+                                    <div><strong>Fecha:</strong> 25/07/2025 14:30</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="history-item">
+                            <div class="history-icon exit">
+                                <i class="fas fa-arrow-up"></i>
+                            </div>
+                            <div class="history-content">
+                                <div class="history-title">Salida de productos</div>
+                                <div class="history-details">
+                                    <div><strong>Producto:</strong> Teclado Mecánico RGB (PRD-00789)</div>
+                                    <div><strong>Cantidad:</strong> 5 unidades</div>
+                                    <div><strong>Fecha:</strong> 24/07/2025 10:15</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="history-item">
+                            <div class="history-icon entry">
+                                <i class="fas fa-arrow-down"></i>
+                            </div>
+                            <div class="history-content">
+                                <div class="history-title">Entrada de productos</div>
+                                <div class="history-details">
+                                    <div><strong>Producto:</strong> Mouse Inalámbrico Logitech (PRD-00456)</div>
+                                    <div><strong>Cantidad:</strong> 20 unidades</div>
+                                    <div><strong>Fecha:</strong> 23/07/2025 16:45</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Overlay for mobile menu -->
+    <div class="overlay"></div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/notyf@3/notyf.min.js"></script>
+    <script>
+        // Initialize Notyf for notifications
+        const notyf = new Notyf({
+            duration: 3000,
+            position: {
+                x: 'right',
+                y: 'top'
+            },
+            types: [
+                {
+                    type: 'success',
+                    background: '#06d6a0',
+                    icon: {
+                        className: 'fas fa-check',
+                        tagName: 'i',
+                        color: '#fff'
+                    }
+                },
+                {
+                    type: 'error',
+                    background: '#ef476f',
+                    icon: {
+                        className: 'fas fa-times',
+                        tagName: 'i',
+                        color: '#fff'
+                    }
+                },
+                {
+                    type: 'warning',
+                    background: '#ffd166',
+                    icon: {
+                        className: 'fas fa-exclamation',
+                        tagName: 'i',
+                        color: '#fff'
+                    }
+                }
+            ]
+        });
+
+        // DOM Elements
+        const menuToggle = document.querySelector('.menu-toggle');
+        const sidebar = document.querySelector('.sidebar');
+        const overlay = document.querySelector('.overlay');
+        const navLinks = document.querySelectorAll('.nav-link');
+        const sections = document.querySelectorAll('.section');
+        const tabFilters = document.querySelectorAll('.tab-filter');
+        const productForm = document.getElementById('product-form');
+        const inventoryForm = document.getElementById('inventory-form');
+
+        // Mobile menu toggle
+        menuToggle.addEventListener('click', () => {
+            sidebar.classList.toggle('active');
+            overlay.style.display = 'block';
+        });
+
+        // Close sidebar when clicking on overlay
+        overlay.addEventListener('click', () => {
+            sidebar.classList.remove('active');
+            overlay.style.display = 'none';
+        });
+
+        // Navigation between sections
+        navLinks.forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                
+                // Remove active class from all links
+                navLinks.forEach(item => item.classList.remove('active'));
+                
+                // Add active class to clicked link
+                link.classList.add('active');
+                
+                // Get target section
+                const targetSection = link.getAttribute('data-section');
+                
+                // Hide all sections
+                sections.forEach(section => section.classList.remove('active'));
+                
+                // Show target section
+                if (targetSection) {
+                    document.getElementById(targetSection).classList.add('active');
+                }
+                
+                // Close sidebar on mobile
+                if (window.innerWidth < 992) {
+                    sidebar.classList.remove('active');
+                    overlay.style.display = 'none';
+                }
+            });
+        });
+
+        // Tab filters
+        tabFilters.forEach(tab => {
+            tab.addEventListener('click', () => {
+                tabFilters.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+            });
+        });
+
+        // Form submissions
+        if (productForm) {
+            productForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                notyf.success('Producto guardado exitosamente');
+                // Here you would normally send data to a server
+                productForm.reset();
+            });
+        }
+
+        if (inventoryForm) {
+            inventoryForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                notyf.success('Movimiento registrado correctamente');
+                // Here you would normally send data to a server
+                inventoryForm.reset();
+            });
+        }
+
+        // Action buttons in table
+        document.querySelectorAll('.action-btn.edit').forEach(btn => {
+            btn.addEventListener('click', () => {
+                notyf.success('Modo edición activado');
+            });
+        });
+
+        document.querySelectorAll('.action-btn.delete').forEach(btn => {
+            btn.addEventListener('click', () => {
+                notyf.error('Producto eliminado');
+            });
+        });
+
+        // Simulate low stock alert
+        setTimeout(() => {
+            notyf.error('¡Atención! El producto PRD-00456 tiene stock muy bajo (2 unidades)');
+        }, 3000);
+    </script>
+</body>
+</html>

@@ -1,0 +1,309 @@
+{% extends "home.html" %}
+
+{% block title %}Gestión de Cuentas por Cobrar y Pagar{% endblock %}
+
+{% block styles %}
+<link rel="stylesheet" href="/static/css/cuentascyp.css">
+{% endblock %}
+
+{% block content %}
+<div id="receivables" class="section-content active">
+    <!-- Indicador de carga -->
+    <div id="loadingIndicator" class="loading-indicator">
+        <div class="text-center">
+            <i class="fas fa-spinner fa-spin fa-3x text-blue-600"></i>
+            <p class="mt-3 text-gray-700">Cargando datos...</p>
+        </div>
+    </div>
+    
+    <!-- Filtros -->
+    <div class="bg-gray-50 rounded-lg p-4 mb-6">
+        <div class="flex flex-wrap gap-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Estado</label>
+                <select id="statusFilter" class="w-full md:w-40 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="all">Todos</option>
+                    <option value="pending">Pendiente</option>
+                    <option value="paid">Pagado</option>
+                    <option value="overdue">Vencido</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Tipo</label>
+                <select id="typeFilter" class="w-full md:w-40 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="all">Todos</option>
+                    <option value="receivable">Por Cobrar</option>
+                    <option value="payable">Por Pagar</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Fecha</label>
+                <div class="flex gap-2">
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                            <i class="fas fa-calendar text-gray-500"></i>
+                        </div>
+                        <input type="date" id="startDate" class="w-40 pl-10 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 date-input">
+                    </div>
+                    <span class="self-center text-gray-500">a</span>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                            <i class="fas fa-calendar text-gray-500"></i>
+                        </div>
+                        <input type="date" id="endDate" class="w-40 pl-10 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 date-input">
+                    </div>
+                </div>
+            </div>
+            <div class="self-end">
+                <button id="filterBtn" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+                    <i class="fas fa-filter mr-2"></i>Filtrar
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Tarjetas Resumen -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <!-- Tarjeta Total por Cobrar -->
+        <div class="bg-white p-4 rounded-lg shadow border border-gray-200">
+            <div class="flex justify-between items-center">
+                <div>
+                    <p class="text-sm text-gray-500">Total por Cobrar</p>
+                    <p class="text-2xl font-bold text-gray-800"><span id="totalReceivable">0</span></p>
+                </div>
+                <div class="bg-blue-100 p-3 rounded-full">
+                    <i class="fas fa-hand-holding-usd text-blue-600 text-xl"></i>
+                </div>
+            </div>
+            <div class="mt-2">
+                <div class="flex justify-between text-sm">
+                    <span>Pendientes</span>
+                    <span class="font-medium"><span id="pendingReceivable">0</span></span>
+                </div>
+                <div class="flex justify-between text-sm">
+                    <span>Vencidas</span>
+                    <span class="font-medium"><span id="overdueReceivable">0</span></span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Tarjeta Total por Pagar -->
+        <div class="bg-white p-4 rounded-lg shadow border border-gray-200">
+            <div class="flex justify-between items-center">
+                <div>
+                    <p class="text-sm text-gray-500">Total por Pagar</p>
+                    <p class="text-2xl font-bold text-gray-800"><span id="totalPayable">0</span></p>
+                </div>
+                <div class="bg-yellow-100 p-3 rounded-full">
+                    <i class="fas fa-file-invoice text-yellow-600 text-xl"></i>
+                </div>
+            </div>
+            <div class="mt-2">
+                <div class="flex justify-between text-sm">
+                    <span>Pendientes</span>
+                    <span class="font-medium"><span id="pendingPayable">0</span></span>
+                </div>
+                <div class="flex justify-between text-sm">
+                    <span>Vencidas</span>
+                    <span class="font-medium"><span id="overduePayable">0</span></span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Tarjeta Próximos Vencimientos -->
+        <div class="bg-white p-4 rounded-lg shadow border border-gray-200">
+            <div class="flex justify-between items-center">
+                <div>
+                    <p class="text-sm text-gray-500">Próximos Vencimientos</p>
+                    <p class="text-2xl font-bold text-gray-800"><span id="nextDueAmount">0</span></p>
+                </div>
+                <div class="bg-red-100 p-3 rounded-full">
+                    <i class="fas fa-exclamation-triangle text-red-600 text-xl"></i>
+                </div>
+            </div>
+            <div class="mt-2">
+                <div class="flex justify-between text-sm">
+                    <span>Esta semana</span>
+                    <span class="font-medium"><span id="thisWeekDue">0</span></span>
+                </div>
+                <div class="flex justify-between text-sm">
+                    <span>Próximos 15 días</span>
+                    <span class="font-medium"><span id="next15DaysDue">0</span></span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Tabla -->
+    <div class="bg-white rounded-lg shadow-md overflow-hidden">
+        <div class="table-responsive">
+            <table id="accountsTable" class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer sortable" data-column="name">
+                            <div class="flex items-center">
+                                <span>Cliente/Proveedor</span>
+                                <i class="fas fa-sort ml-1 text-gray-400"></i>
+                            </div>
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer sortable" data-column="amount">
+                            <div class="flex items-center">
+                                <span>Monto</span>
+                                <i class="fas fa-sort ml-1 text-gray-400"></i>
+                            </div>
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer sortable" data-column="issueDate">
+                            <div class="flex items-center">
+                                <span>Fecha Emisión</span>
+                                <i class="fas fa-sort ml-1 text-gray-400"></i>
+                            </div>
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer sortable" data-column="dueDate">
+                            <div class="flex items-center">
+                                <span>Fecha Vencimiento</span>
+                                <i class="fas fa-sort ml-1 text-gray-400"></i>
+                            </div>
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Estado
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Acciones
+                        </th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    <!-- Las filas se llenarán dinámicamente con JavaScript -->
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Paginación -->
+        <div class="flex items-center justify-between border-t border-gray-200 px-4 py-3 sm:px-6">
+            <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                <div>
+                    <p id="paginationInfo" class="text-sm text-gray-700">
+                        Mostrando <span class="font-medium">0</span> a <span class="font-medium">0</span> de <span class="font-medium">0</span> resultados
+                    </p>
+                </div>
+                <div>
+                    <nav id="paginationContainer" class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                        <!-- La paginación se generará dinámicamente aquí -->
+                    </nav>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal para detalles: Centrado y con mejor estilo -->
+    <div id="detailModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50 flex items-center justify-center">
+        <div class="relative p-5 border w-11/12 md:w-2/3 max-w-3xl shadow-lg rounded-md bg-white">
+            <div class="mt-3">
+                <h3 class="text-lg leading-6 font-medium text-gray-900" id="modalTitle">Detalles de Cuenta</h3>
+                <div class="mt-2">
+                    <div id="modalContent" class="text-sm text-gray-500">
+                        <!-- Contenido dinámico -->
+                    </div>
+                </div>
+                <div class="items-center px-4 py-3 mt-4">
+                    <button id="closeModal" class="px-4 py-2 bg-blue-600 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        Cerrar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para realizar pago -->
+<div id="paymentModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50 flex items-center justify-center">
+    <div class="relative p-5 border w-11/12 md:w-2/3 max-w-3xl shadow-lg rounded-md bg-white">
+        <div class="mt-3">
+            <h3 class="text-lg leading-6 font-medium text-gray-900" id="paymentModalTitle">Registrar Pago</h3>
+            <form id="paymentForm" class="mt-4">
+                <div class="bg-blue-50 p-4 rounded-lg mb-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <p class="text-sm text-gray-600">Cuenta:</p>
+                            <p class="font-medium" id="paymentAccountName"></p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-600">Documento:</p>
+                            <p class="font-medium" id="paymentAccountDocument"></p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-600">Saldo pendiente:</p>
+                            <p class="font-medium text-green-600" id="paymentBalance"></p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Monto a Pagar *</label>
+                        <input type="number" id="paymentAmount" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required min="0.01" step="0.01">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Fecha de Pago *</label>
+                        <input type="date" id="paymentDate" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Método de Pago *</label>
+                        <select id="paymentMethod" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                            <option value="cash">Efectivo</option>
+                            <option value="transfer" selected>Transferencia</option>
+                            <option value="card">Tarjeta</option>
+                            <option value="check">Cheque</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Referencia</label>
+                        <input type="text" id="paymentReference" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Número de transacción">
+                    </div>
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Notas</label>
+                    <textarea id="paymentNotes" rows="3" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Detalles adicionales del pago"></textarea>
+                </div>
+                
+                <div class="flex items-center px-4 py-3 gap-2">
+                    <button type="button" id="cancelPayment" class="px-4 py-2 bg-gray-500 text-white text-base font-medium rounded-md w-1/2 shadow-sm hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-300">
+                        Cancelar
+                    </button>
+                    <button type="button" id="submitPayment" class="px-4 py-2 bg-green-600 text-white text-base font-medium rounded-md w-1/2 shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500">
+                        Registrar Pago
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Pasamos la URL de la API desde Flask
+    window.API_URL = "{{ url_for('cuentascyp.get_cuentas') }}";
+</script>
+<script src="/static/js/cuentascyp.js"></script>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+    tailwind.config = {
+        theme: {
+            extend: {
+                colors: {
+                    primary: '#2563eb',
+                    secondary: '#4f46e5',
+                    success: '#22c55e',
+                    danger: '#ef4444',
+                    warning: '#f59e0b',
+                    info: '#06b6d4',
+                    dark: '#1e293b',
+                    light: '#f8fafc'
+                }
+            }
+        }
+    }
+</script>
+{% endblock %}

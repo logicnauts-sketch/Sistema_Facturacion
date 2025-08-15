@@ -1,0 +1,420 @@
+{% extends "home.html" %}
+
+{% block title %}Facturación{% endblock %}
+
+    {% block styles %}
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/notyf@3/notyf.min.css">
+    <link rel="stylesheet" href="/static/css/facturacion.css">
+    {% endblock %}
+    
+
+{% block content %}
+    <div class="container">
+        <div class="main-layout">
+            <!-- Panel izquierdo: Selector de cliente y productos -->
+            <div class="panel-left">
+                <!-- Selector de cliente -->
+                 {% if session.rol == 'admin' %}
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">Cliente/Proveedor</h2>
+                    </div>
+
+                    <div id="client-info">
+                        <div class="client-badge">
+                            <div class="client-content">
+                                <i class="fas fa-user client-icon"></i>
+                                <span>Consumidor Final</span>
+                            </div>
+                            <i class="fas fa-chevron-down dropdown-icon"></i>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Buscador de productos -->
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">Buscador de Productos</h2>
+                    </div>
+
+                    <div class="search-container">
+                        <div class="search-input-group">
+                            <input type="text" id="product-search" class="search-inputf"
+                                placeholder="Ingrese código o nombre de producto...">
+                            <button id="search-btn" class="search-button">
+                                <i class="fas fa-search"></i>
+                            </button>
+                        </div>
+                        <div id="search-suggestions" class="search-suggestions hidden">
+                            <!-- Las sugerencias se cargarán aquí -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tabla de productos -->
+                <div class="card">
+                    <div id="cart-table-container" class="cart-table-container hidden">
+                        <div class="table-wrapper">
+                            <table class="cart-table">
+                                <thead>
+                                    <tr>
+                                        <th>Cantidad</th>
+                                        <th>Descripción</th>
+                                        <th>Precio</th>
+                                        <th>ITBIS (18%)</th>
+                                        <th>Total línea</th>
+                                        <th>Acción</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="cart-items">
+                                    <!-- Los productos se agregarán aquí dinámicamente -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Mensaje cuando el carrito está vacío -->
+                    <div id="empty-cart" class="empty-cart">
+                        <i class="fas fa-shopping-cart empty-cart-icon"></i>
+                        <h3 class="empty-cart-title">Carrito vacío</h3>
+                        <p class="empty-cart-text">Busque productos para comenzar a facturar</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Panel derecho: Resumen y pago -->
+            <div class="panel-right">
+                <div class="card summary-container">
+                    <!-- Resumen de venta -->
+                    <div class="card-header">
+                        <h2 class="card-title">Resumen de Venta</h2>
+                    </div>
+                    <div class="card-body">
+                        <div class="summary-item">
+                            <span>Subtotal:</span>
+                            <span id="subtotal" class="summary-value">RD$ 0.00</span>
+                        </div>
+
+                        <div class="summary-item">
+                            <span>Total ITBIS:</span>
+                            <span id="itbis-total" class="summary-value">RD$ 0.00</span>
+                        </div>
+
+                        <div class="summary-total">
+                            <span>Total general:</span>
+                            <span id="total" class="total-amount">RD$ 0.00</span>
+                        </div>
+                    </div>
+
+                    <!-- Selección de pago -->
+                    <div class="payment-methods">
+                        <div class="card-header">
+                            <h2 class="card-title">Método de Pago</h2>
+                        </div>
+                        <div class="card-body">
+                            <div class="payment-grid">
+                                <div class="payment-method" data-method="efectivo">
+                                    <i class="fas fa-money-bill-wave payment-icon payment-green"></i>
+                                    <p class="payment-label">Efectivo</p>
+                                </div>
+                                <div class="payment-method" data-method="tarjeta">
+                                    <i class="fas fa-credit-card payment-icon payment-blue"></i>
+                                    <p class="payment-label">Tarjeta</p>
+                                </div>
+                                <div class="payment-method" data-method="transferencia">
+                                    <i class="fas fa-exchange-alt payment-icon payment-purple"></i>
+                                    <p class="payment-label">Transferencia</p>
+                                </div>
+                                <div class="payment-method" data-method="credito">
+                                    <i class="fas fa-file-invoice-dollar payment-icon payment-orange"></i>
+                                    <p class="payment-label">Crédito</p>
+                                </div>
+                            </div>
+
+                            <div id="cash-input" class="cash-input">
+                                <label class="input-label">Monto recibido:</label>
+                                <input type="text" id="amount-received" class="amount-input" placeholder="0.00"
+                                    inputmode="decimal" autocomplete="off">
+                            </div>
+
+                            <div id="cash-change" class="cash-change hidden">
+                                <div class="change-container">
+                                    <span>Cambio:</span>
+                                    <span id="change-amount">RD$ 0.00</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Botón de facturación -->
+                    <div class="invoice-button-container">
+                        <button id="invoice-btn" class="invoice-button" disabled>
+                            <i class="fas fa-receipt"></i>Facturar y Pagar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para seleccionar cliente/proveedor -->
+    <div id="client-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Seleccionar Cliente/Proveedor</h3>
+                <button id="close-client-modal" class="modal-close">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <div class="modal-body">
+                <div class="tab-container">
+                    <button class="tab tab-active" data-tab="clients">Clientes</button>
+                    <button class="tab" data-tab="suppliers">Proveedores</button>
+                </div>
+
+                <div class="search-container">
+                    <div class="search-input-group">
+                        <input type="text" id="client-search" class="search-inputf"
+                            placeholder="Buscar cliente/proveedor...">
+                        <button id="client-search-btn" class="search-button">
+                            <i class="fas fa-search"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="tab-content active" id="clients-tab">
+                    <div id="clients-list" class="grid-list">
+                        <!-- Los clientes se cargarán aquí dinámicamente -->
+                    </div>
+                </div>
+
+                <div class="tab-content hidden" id="suppliers-tab">
+                    <div id="suppliers-list" class="grid-list">
+                        <!-- Los proveedores se cargarán aquí dinámicamente -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de búsqueda de productos -->
+    <div id="products-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Buscar Productos</h3>
+                <button id="close-products-modal" class="modal-close">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <div class="modal-body">
+                <div class="search-container">
+                    <div class="search-input-group">
+                        <input type="text" id="modal-product-search" class="search-inputf"
+                            placeholder="Buscar productos por nombre o código...">
+                        <button id="modal-search-btn" class="search-button">
+                            <i class="fas fa-search"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="table-wrapper">
+                    <table class="products-table">
+                        <thead>
+                            <tr>
+                                <th>Código</th>
+                                <th>Nombre</th>
+                                <th>Precio</th>
+                                <th>ITBIS</th>
+                            </tr>
+                        </thead>
+                        <tbody id="products-list">
+                            <!-- Los productos se cargarán aquí dinámicamente -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de confirmación de pago (efectivo) -->
+    <div id="payment-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Confirmar Pago</h3>
+                <button id="cancel-payment" class="modal-close">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <div class="modal-body">
+                <div class="confirm-container">
+                    <div class="confirm-header">
+                        <i class="fas fa-money-bill-wave confirm-icon payment-green"></i>
+                        <h3 class="confirm-title">Confirmar Pago en Efectivo</h3>
+                        <p class="confirm-subtitle">Por favor verifique los montos antes de confirmar la transacción</p>
+                    </div>
+
+                    <div class="confirm-details">
+                        <div class="confirm-item">
+                            <span class="confirm-label">Total a pagar:</span>
+                            <span id="modal-total" class="confirm-value">RD$ 0.00</span>
+                        </div>
+                        <div class="confirm-item">
+                            <span class="confirm-label">Monto recibido:</span>
+                            <span id="modal-received" class="confirm-value">RD$ 0.00</span>
+                        </div>
+                        <div class="confirm-item confirm-total">
+                            <span>Cambio:</span>
+                            <span id="modal-change" class="confirm-change">RD$ 0.00</span>
+                        </div>
+                    </div>
+
+                    <div class="button-group">
+                        <button id="confirm-payment" class="confirm-button btn-spinner">
+                            <i class="fas fa-check-circle"></i> Confirmar Pago
+                        </button>
+                        <button id="cancel-payment-2" class="cancel-button">
+                            <i class="fas fa-times"></i> Cancelar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de validación de tarjeta -->
+    <div id="card-validation-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Procesando Tarjeta</h3>
+                <button id="cancel-card" class="modal-close">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <div class="modal-body">
+                <div class="confirm-container">
+                    <div class="confirm-header">
+                        <i class="fas fa-credit-card confirm-icon payment-blue"></i>
+                        <h3 class="confirm-title">Procesando Pago con Tarjeta</h3>
+                        <p class="confirm-subtitle">Por favor espere mientras validamos su pago</p>
+                    </div>
+
+                    <div class="spinner"></div>
+                    <p class="text-center"
+                        style="font-size: 1.1rem;margin-top: 30px;justify-content: center;display: flex;">Validando pago
+                        con tarjeta...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de transferencia -->
+    <div id="transfer-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Confirmar Transferencia</h3>
+                <button id="cancel-transfer" class="modal-close">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <div class="modal-body">
+                <div class="confirm-container">
+                    <div class="confirm-header">
+                        <i class="fas fa-exchange-alt confirm-icon payment-purple"></i>
+                        <h3 class="confirm-title">Confirmar Transferencia Bancaria</h3>
+                        <p class="confirm-subtitle">Confirme solo cuando haya recibido la transferencia</p>
+                    </div>
+
+                    <div class="confirm-details">
+                        <div class="confirm-item confirm-total" style="border-bottom: none;">
+                            <span>Total a transferir:</span>
+                            <span id="transfer-total" class="confirm-value">RD$ 0.00</span>
+                        </div>
+
+                        <div class="alert"
+                            style="background: #fff9db; padding: 20px; border-radius: var(--border-radius); margin: 30px 0; display: flex; gap: 15px; align-items: center;">
+                            <i class="fas fa-exclamation-circle" style="color: #f59e0b; font-size: 1.8rem;"></i>
+                            <p style="color: #5c3c00; font-size: 1.1rem;">
+                                Confirme solo cuando haya recibido la transferencia bancaria.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="button-group">
+                        <button id="confirm-transfer" class="confirm-button">
+                            <i class="fas fa-check-circle"></i> Transferencia Recibida
+                        </button>
+                        <button id="cancel-transfer-2" class="cancel-button">
+                            <i class="fas fa-times"></i> Cancelar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de crédito -->
+    <div id="credit-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Confirmar Crédito</h3>
+                <button id="cancel-credit" class="modal-close">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <div class="modal-body">
+                <div class="confirm-container">
+                    <div class="confirm-header">
+                        <i class="fas fa-file-invoice-dollar confirm-icon payment-orange"></i>
+                        <h3 class="confirm-title">Registrar Crédito</h3>
+                        <p class="confirm-subtitle">Esta factura se registrará como crédito pendiente de pago</p>
+                    </div>
+
+                    <div class="confirm-details">
+                        <div class="confirm-item confirm-total" style="border-bottom: none;">
+                            <span>Total a crédito:</span>
+                            <span id="credit-total" class="confirm-value">RD$ 0.00</span>
+                        </div>
+
+                        <div class="form-group" style="margin: 30px 0;">
+                            <label class="input-label">Fecha de vencimiento:</label>
+                            <input type="date" id="due-date" class="amount-input" min=""
+                                style="margin-top: 12px; padding: 14px;">
+                        </div>
+
+                        <div class="alert"
+                            style="background: #e7f5ff; padding: 20px; border-radius: var(--border-radius); margin: 30px 0; display: flex; gap: 15px; align-items: center;">
+                            <i class="fas fa-info-circle" style="color: #339af0; font-size: 1.8rem;"></i>
+                            <p style="color: #0a58ca; font-size: 1.1rem;">
+                                Esta factura se registrará como crédito pendiente de pago.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="button-group">
+                        <button id="confirm-credit" class="confirm-button">
+                            <i class="fas fa-check-circle"></i> Confirmar Crédito
+                        </button>
+                        <button id="cancel-credit-2" class="cancel-button">
+                            <i class="fas fa-times"></i> Cancelar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/notyf@3/notyf.min.js"></script>
+    <script src="/static/js/facturacion.js"></script>
+{% endblock %}

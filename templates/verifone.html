@@ -1,0 +1,94 @@
+{% extends "home.html" %}
+
+{% block title %}Buscar Verifone Conectados{% endblock %}
+
+    {% block styles %}
+    <link rel="stylesheet" href="/static/css/verifone.css">
+    {% endblock %}
+    
+
+
+{% block content %}
+    <div class="container">
+        <div class="content">
+            <div class="card">
+                <div class="card-title">
+                    <i class="fas fa-microchip"></i>
+                    <h2>Estado del Dispositivo</h2>
+                </div>
+                
+                <div class="status-bar">
+                    <div id="statusIndicator" class="status-indicator"></div>
+                    <div class="status-text" id="statusText">No se ha seleccionado ningún dispositivo</div>
+                </div>
+                
+                <div id="deviceInfo" class="device-info hidden">
+                    <div class="device-card">
+                        <div class="device-name" id="deviceName">Terminal Verifone VX520</div>
+                        <div class="device-detail">
+                            <span class="device-label">Puerto:</span>
+                            <span id="devicePort">COM3</span>
+                        </div>
+                        <div class="device-detail">
+                            <span class="device-label">Fabricante:</span>
+                            <span id="deviceManufacturer">Verifone Inc.</span>
+                        </div>
+                        <div class="device-detail">
+                            <span class="device-label">Estado:</span>
+                            <span id="deviceStatus">Desconectado</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="noDeviceMessage" class="notification info">
+                    <i class="fas fa-info-circle"></i>
+                    <span>No se ha seleccionado ningún dispositivo Verifone. Haz clic en "Buscar Dispositivos" para comenzar.</span>
+                </div>
+                
+                <div class="btn-container">
+                    <button id="searchBtn" class="btn btn-primary" onclick="searchDevices()">
+                        <i class="fas fa-search"></i> Buscar Dispositivos
+                    </button>
+                    <button id="testBtn" class="btn btn-success" onclick="testDevice()" disabled>
+                        <i class="fas fa-plug"></i> Probar Conexión
+                    </button>
+                    <button id="clearBtn" class="btn btn-danger" onclick="clearSelection()" disabled>
+                        <i class="fas fa-times"></i> Deseleccionar
+                    </button>
+                </div>
+            </div>
+            
+            <div id="searchResults" class="search-results hidden">
+                <div class="card">
+                    <div class="card-title">
+                        <i class="fas fa-list"></i>
+                        <h2>Dispositivos Detectados</h2>
+                    </div>
+                    
+                    <div id="loading" class="loading hidden">
+                        <div class="spinner"></div>
+                        <p>Buscando dispositivos Verifone...</p>
+                    </div>
+                    
+                    <div id="resultsContainer" class="results-grid">
+                        <!-- Los dispositivos aparecerán aquí -->
+                    </div>
+                    
+                    <div id="noDevicesMessage" class="notification info hidden">
+                        <i class="fas fa-exclamation-circle"></i>
+                        <span>No se encontraron dispositivos Verifone conectados. Por favor, conecta un dispositivo e intenta de nuevo.</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="testResult" class="notification hidden">
+                <!-- Resultados de la prueba aparecerán aquí -->
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/verifone.js"></script>
+
+{% endblock %}

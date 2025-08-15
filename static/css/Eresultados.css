@@ -1,0 +1,259 @@
+
+:root {
+    --primary: #1e40af;
+    --primary-light: #3b82f6;
+    --secondary: #4b5563;
+    --light: #f9fafb;
+    --border: #e5e7eb;
+    --success: #16a34a;
+    --danger: #dc2626;
+    --warning: #eab308;
+    --info: #0ea5e9;
+}
+
+.container {
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.page-title {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--primary);
+}
+
+.page-description {
+    color: var(--secondary);
+    font-size: 1rem;
+    margin-top: 0.25rem;
+}
+
+.controls {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+select, button {
+    padding: 0.75rem 1rem;
+    border-radius: 0.5rem;
+    border: 1px solid var(--border);
+    background-color: white;
+    font-size: 0.95rem;
+    transition: all 0.2s ease;
+}
+
+select:focus {
+    outline: none;
+    border-color: var(--primary-light);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
+.btn-primary {
+    background-color: var(--primary);
+    color: white;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    font-weight: 500;
+}
+
+.btn-primary:hover {
+    background-color: #1d4ed8;
+}
+
+.summary-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.card {
+    background-color: white;
+    border-radius: 0.75rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    padding: 1.5rem;
+    transition: transform 0.2s ease;
+}
+
+.card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.08);
+}
+
+.card-title {
+    font-size: 1.1rem;
+    font-weight: 500;
+    color: var(--secondary);
+    margin-bottom: 0.75rem;
+}
+
+.card-value {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+}
+
+.income-value {
+    color: var(--success);
+}
+
+.expense-value {
+    color: var(--danger);
+}
+
+.profit-value {
+    color: var(--primary);
+}
+
+.card-change {
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.positive-change {
+    color: var(--success);
+}
+
+.negative-change {
+    color: var(--danger);
+}
+
+.summary-table {
+    background-color: white;
+    border-radius: 0.75rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    overflow: hidden;
+    margin-bottom: 2rem;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+thead {
+    background-color: var(--light);
+}
+
+th {
+    padding: 1rem 1.5rem;
+    text-align: left;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+tbody tr {
+    border-bottom: 1px solid var(--border);
+}
+
+tbody tr:last-child {
+    border-bottom: none;
+}
+
+td {
+    padding: 1rem 1.5rem;
+    font-size: 0.95rem;
+}
+
+.category-name {
+    font-weight: 500;
+}
+
+.total-row {
+    background-color: var(--light);
+    font-weight: 700;
+}
+
+.profit-row {
+    background-color: rgba(219, 234, 254, 0.5);
+    font-weight: 700;
+}
+
+.positive {
+    color: var(--success);
+    font-weight: 600;
+}
+
+.negative {
+    color: var(--danger);
+    font-weight: 600;
+}
+
+.charts-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+    gap: 1.5rem;
+}
+
+.chart-card {
+    background-color: white;
+    border-radius: 0.75rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    padding: 1.5rem;
+}
+
+.chart-title {
+    font-size: 1.1rem;
+    font-weight: 500;
+    color: var(--secondary);
+    margin-bottom: 1rem;
+}
+
+.chart-container {
+    position: relative;
+    height: 300px;
+}
+
+footer {
+    text-align: center;
+    margin-top: 2rem;
+    padding: 1.5rem 0;
+    color: var(--secondary);
+    font-size: 0.9rem;
+    border-top: 1px solid var(--border);
+}
+
+@media (max-width: 768px) {
+    .header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+    
+    .controls {
+        width: 100%;
+    }
+    
+    select, button {
+        flex: 1;
+    }
+    
+    .summary-cards {
+        grid-template-columns: 1fr;
+    }
+    
+    .charts-container {
+        grid-template-columns: 1fr;
+    }
+    
+    th, td {
+        padding: 0.75rem;
+    }
+}

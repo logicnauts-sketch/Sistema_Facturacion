@@ -1,0 +1,203 @@
+{% extends "home.html" %}
+
+{% block title %}Configuración de Empresa{% endblock %}
+
+    {% block styles %}
+    <link rel="stylesheet" href="/static/css/empresa.css">
+    {% endblock %}
+    
+
+
+{% block content %}
+    <div class="container">
+        <header>
+            <div class="logo-container">
+                <div class="logo-e" id="companyLogo">
+                    <i class="fas fa-building" id="logoIcon"></i>
+                    <img id="companyLogoImg" alt="Logo de la empresa">
+                </div>
+                <div class="company-name" id="companyName">Configuración de Empresa</div>
+            </div>
+            <button class="btn-open-modal" id="openModal">
+                <i class="fas fa-edit"></i> Editar Configuración
+            </button>
+        </header>
+        
+        <div class="content">
+            <h1>Administración de Datos Empresariales</h1>
+            <p>Actualice la información legal y de contacto de su empresa para mantener sus documentos siempre actualizados.</p>
+            
+            <div class="info-note">
+                <i class="fas fa-info-circle"></i>
+                <div>Esta información se utilizará en todas sus facturas, recibos y documentos oficiales. Asegúrese de que todos los datos sean precisos y estén actualizados según las regulaciones locales.</div>
+            </div>
+            
+            <div class="features">
+                <div class="feature">
+                    <i class="fas fa-file-invoice"></i>
+                    <h3>Datos Legales</h3>
+                    <p id="legalData">Nombre de empresa y RNC para documentos fiscales.</p>
+                </div>
+                
+                <div class="feature">
+                    <i class="fas fa-address-book"></i>
+                    <h3>Información de Contacto</h3>
+                    <p id="contactData">Dirección física y teléfono para que sus clientes puedan contactarle.</p>
+                </div>
+                
+                <div class="feature">
+                    <i class="fas fa-sticky-note"></i>
+                    <h3>Mensajes Personalizados</h3>
+                    <p id="messagesData">Texto legal que aparece en la parte inferior de sus documentos.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal de Configuración -->
+    <div class="modal" id="configModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="fas fa-cogs"></i> Configuración de Empresa</h2>
+                <button class="close-modal" id="closeModal">&times;</button>
+            </div>
+            
+            <div class="modal-tabs">
+                <button class="tab-btn active" data-tab="general"><i class="fas fa-cog"></i> General</button>
+                <button class="tab-btn" data-tab="contacto"><i class="fas fa-address-book"></i> Contacto</button>
+                <button class="tab-btn" data-tab="documentos"><i class="fas fa-file-alt"></i> Documentos</button>
+                <button class="tab-btn" data-tab="apariencia"><i class="fas fa-paint-brush"></i> Apariencia</button>
+            </div>
+            
+            <div class="modal-body">
+                <form id="empresaForm" enctype="multipart/form-data">
+                    <!-- Tab General -->
+                    <div class="tab-content active" id="general-tab">
+                        <div class="form-group">
+                            <label for="nombre">
+                                <i class="fas fa-signature"></i> Nombre de la Empresa
+                            </label>
+                            <input type="text" id="nombre" name="nombre" class="form-control" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="rnc">
+                                <i class="fas fa-id-card"></i> RNC
+                            </label>
+                            <input type="text" id="rnc" name="rnc" class="form-control" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="actividad_comercial">
+                                <i class="fas fa-briefcase"></i> Actividad Comercial
+                            </label>
+                            <input type="text" id="actividad_comercial" name="actividad_comercial" class="form-control" required>
+                        </div>
+                    </div>
+                    
+                    <!-- Tab Contacto -->
+                    <div class="tab-content" id="contacto-tab">
+                        <div class="form-group">
+                            <label for="telefono">
+                                <i class="fas fa-phone"></i> Teléfono
+                            </label>
+                            <input type="text" id="telefono" name="telefono" class="form-control" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="email">
+                                <i class="fas fa-envelope"></i> Email
+                            </label>
+                            <input type="email" id="email" name="email" class="form-control" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="direccion">
+                                <i class="fas fa-map-marker-alt"></i> Dirección
+                            </label>
+                            <input type="text" id="direccion" name="direccion" class="form-control" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="website">
+                                <i class="fas fa-globe"></i> Sitio Web
+                            </label>
+                            <input type="url" id="website" name="website" class="form-control">
+                        </div>
+                    </div>
+                    
+                    <!-- Tab Documentos -->
+                    <div class="tab-content" id="documentos-tab">
+                        <div class="form-group">
+                            <label for="mensaje_legal">
+                                <i class="fas fa-file-alt"></i> Mensaje Legal
+                            </label>
+                            <textarea id="mensaje_legal" name="mensaje_legal" class="form-control" rows="3" required></textarea>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="terminos">
+                                <i class="fas fa-file-contract"></i> Términos y Condiciones
+                            </label>
+                            <textarea id="terminos" name="terminos" class="form-control" rows="5"></textarea>
+                        </div>
+                    </div>
+                    
+                    <!-- Tab Apariencia -->
+                    <div class="tab-content" id="apariencia-tab">
+                        <div class="logo-section">
+                            <div class="logo-preview">
+                                <img id="logoPreview" src="" alt="Logo de la empresa">
+                            </div>
+                            
+                            <div class="logo-controls">
+                                <div class="file-input-container">
+                                    <input type="file" id="logo" name="logo" accept="image/*">
+                                    <label for="logo" class="file-input-label">
+                                        <i class="fas fa-upload"></i> Subir nuevo logo
+                                    </label>
+                                </div>
+                                
+                                <div class="logo-requirements">
+                                    <p><strong>Recomendaciones para el logo:</strong></p>
+                                    <ul>
+                                        <li>Formato PNG con fondo transparente</li>
+                                        <li>Tamaño mínimo: 300x300 píxeles</li>
+                                        <li>Máximo 2MB de tamaño</li>
+                                        <li>Relación de aspecto 1:1 (cuadrado)</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="color_principal">
+                                <i class="fas fa-palette"></i> Color Principal
+                            </label>
+                            <input type="color" id="color_principal" name="color_principal" class="form-control" value="#3498db" style="height: 50px;">
+                        </div>
+                    </div>
+                </form>
+            </div>
+            
+            <div class="modal-footer">
+                <button class="btn btn-cancel" id="cancelChanges">
+                    <i class="fas fa-times"></i> Cancelar
+                </button>
+                <button class="btn btn-save" id="saveChanges">
+                    <i class="fas fa-save"></i> Guardar Cambios
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast notification -->
+    <div class="toast" id="toast">
+        <i class="fas fa-check-circle"></i>
+        <span id="toastMessage">¡Cambios guardados correctamente!</span>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/empresa.js"></script>
+{% endblock %}

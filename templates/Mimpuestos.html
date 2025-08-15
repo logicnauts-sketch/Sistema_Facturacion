@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Gestión de Impuestos</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            --primary: #1e40af;
+            --primary-light: #3b82f6;
+            --secondary: #4b5563;
+            --light: #f9fafb;
+            --border: #e5e7eb;
+            --success: #16a34a;
+            --warning: #d97706;
+            --danger: #dc2626;
+            --itbis: #3b82f6;
+            --isr: #8b5cf6;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: #f3f4f6;
+            color: #1f2937;
+            padding: 20px;
+        }
+        
+        .taxes-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            color: var(--primary);
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            color: var(--secondary);
+            font-size: 1.1rem;
+        }
+        
+        .grid {
+            display: grid;
+            gap: 20px;
+        }
+        
+        .grid-cols-3 {
+            grid-template-columns: repeat(3, 1fr);
+        }
+        
+        .grid-cols-2 {
+            grid-template-columns: repeat(2, 1fr);
+        }
+        
+        .bg-white {
+            background-color: white;
+        }
+        
+        .rounded-lg {
+            border-radius: 12px;
+        }
+        
+        .shadow {
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+        
+        .border {
+            border: 1px solid var(--border);
+        }
+        
+        .p-4 {
+            padding: 1.5rem;
+        }
+        
+        .p-6 {
+            padding: 1.5rem;
+        }
+        
+        .mb-6 {
+            margin-bottom: 1.5rem;
+        }
+        
+        .flex {
+            display: flex;
+        }
+        
+        .justify-between {
+            justify-content: space-between;
+        }
+        
+        .items-center {
+            align-items: center;
+        }
+        
+        .text-sm {
+            font-size: 0.875rem;
+        }
+        
+        .text-gray-500 {
+            color: #6b7280;
+        }
+        
+        .text-2xl {
+            font-size: 1.5rem;
+        }
+        
+        .font-bold {
+            font-weight: 700;
+        }
+        
+        .text-blue-600 {
+            color: var(--primary-light);
+        }
+        
+        .text-green-600 {
+            color: var(--success);
+        }
+        
+        .bg-blue-100 {
+            background-color: #dbeafe;
+        }
+        
+        .p-3 {
+            padding: 0.75rem;
+        }
+        
+        .rounded-full {
+            border-radius: 9999px;
+        }
+        
+        .text-blue-600 {
+            color: var(--primary-light);
+        }
+        
+        .text-xl {
+            font-size: 1.25rem;
+        }
+        
+        .mt-2 {
+            margin-top: 0.5rem;
+        }
+        
+        .font-medium {
+            font-weight: 500;
+        }
+        
+        .text-gray-800 {
+            color: #1f2937;
+        }
+        
+        .text-lg {
+            font-size: 1.125rem;
+        }
+        
+        .mb-4 {
+            margin-bottom: 1rem;
+        }
+        
+        .gap-4 {
+            gap: 1rem;
+        }
+        
+        .border-gray-200 {
+            border-color: var(--border);
+        }
+        
+        .text-md {
+            font-size: 1rem;
+        }
+        
+        .text-gray-700 {
+            color: #374151;
+        }
+        
+        .mb-2 {
+            margin-bottom: 0.5rem;
+        }
+        
+        .mb-3 {
+            margin-bottom: 0.75rem;
+        }
+        
+        .bg-blue-50 {
+            background-color: #dbeafe;
+        }
+        
+        .border-blue-200 {
+            border-color: #bfdbfe;
+        }
+        
+        .mb-4 {
+            margin-bottom: 1rem;
+        }
+        
+        .text-gray-600 {
+            color: #4b5563;
+        }
+        
+        .flex-wrap {
+            flex-wrap: wrap;
+        }
+        
+        .gap-3 {
+            gap: 0.75rem;
+        }
+        
+        .button {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: none;
+        }
+        
+        .button i {
+            margin-right: 8px;
+        }
+        
+        .bg-blue-600 {
+            background-color: var(--primary-light);
+            color: white;
+        }
+        
+        .bg-blue-600:hover {
+            background-color: #2563eb;
+        }
+        
+        .bg-green-600 {
+            background-color: var(--success);
+            color: white;
+        }
+        
+        .bg-green-600:hover {
+            background-color: #15803d;
+        }
+        
+        .bg-purple-600 {
+            background-color: var(--isr);
+            color: white;
+        }
+        
+        .bg-purple-600:hover {
+            background-color: #7c3aed;
+        }
+        
+        .bg-yellow-600 {
+            background-color: var(--warning);
+            color: white;
+        }
+        
+        .bg-yellow-600:hover {
+            background-color: #ca8a04;
+        }
+        
+        .bg-orange-600 {
+            background-color: #ea580c;
+            color: white;
+        }
+        
+        .bg-orange-600:hover {
+            background-color: #c2410c;
+        }
+        
+        .status-card {
+            transition: all 0.3s ease;
+        }
+        
+        .status-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
+        }
+        
+        .tax-section {
+            margin-bottom: 30px;
+            animation: fadeIn 0.5s ease;
+        }
+        
+        .chart-container {
+            height: 300px;
+            margin-top: 20px;
+        }
+        
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        .modal.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .modal-content {
+            background-color: white;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 500px;
+            padding: 30px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            transform: translateY(-20px);
+            transition: transform 0.3s ease;
+        }
+        
+        .modal.active .modal-content {
+            transform: translateY(0);
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .modal-header h2 {
+            font-size: 1.5rem;
+            color: var(--primary);
+        }
+        
+        .close-button {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--secondary);
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: var(--secondary);
+        }
+        
+        .form-control {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border 0.2s ease;
+        }
+        
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary-light);
+        }
+        
+        .modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            margin-top: 20px;
+        }
+        
+        .btn-secondary {
+            background-color: #e5e7eb;
+            color: #4b5563;
+        }
+        
+        .btn-secondary:hover {
+            background-color: #d1d5db;
+        }
+        
+        .paid-status {
+            background-color: #dcfce7;
+            color: #16a34a;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-weight: 500;
+            font-size: 14px;
+        }
+        
+        .paid-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: var(--success);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .card-header {
+            position: relative;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        @media (max-width: 992px) {
+            .grid-cols-3 {
+                grid-template-columns: repeat(1, 1fr);
+            }
+            
+            .grid-cols-2 {
+                grid-template-columns: repeat(1, 1fr);
+            }
+        }
+        
+        .history-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        
+        .history-table th, 
+        .history-table td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .history-table th {
+            background-color: #f9fafb;
+            font-weight: 600;
+            color: var(--secondary);
+        }
+        
+        .history-table tr:hover {
+            background-color: #f9fafb;
+        }
+        
+        .paid-row {
+            background-color: #f0fdf4;
+        }
+        
+        .pending-row {
+            background-color: #fffbeb;
+        }
+        
+        .overdue-row {
+            background-color: #fef2f2;
+        }
+    </style>
+</head>
+<body>
+    <div class="taxes-container">
+        <div class="header">
+            <h1><i class="fas fa-file-invoice-dollar"></i> Gestión de Impuestos</h1>
+            <p>Administra tus obligaciones tributarias en República Dominicana</p>
+        </div>
+        
+        <!-- Resumen de impuestos -->
+        <div class="grid grid-cols-3 gap-4 mb-6">
+            <div class="bg-white p-4 rounded-lg shadow border border-gray-200 status-card" id="itbis-summary">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <p class="text-sm text-gray-500">ITBIS por Pagar</p>
+                        <p class="text-2xl font-bold text-blue-600">RD$ 38,750</p>
+                    </div>
+                    <div class="bg-blue-100 p-3 rounded-full">
+                        <i class="fas fa-file-invoice-dollar text-blue-600 text-xl"></i>
+                    </div>
+                </div>
+                <div class="mt-2">
+                    <div class="flex justify-between text-sm">
+                        <span>Vencimiento</span>
+                        <span class="font-medium">20/09/2023</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-white p-4 rounded-lg shadow border border-gray-200 status-card" id="isr-summary">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <p class="text-sm text-gray-500">ISR por Pagar</p>
+                        <p class="text-2xl font-bold text-blue-600">RD$ 22,400</p>
+                    </div>
+                    <div class="bg-blue-100 p-3 rounded-full">
+                        <i class="fas fa-file-invoice text-blue-600 text-xl"></i>
+                    </div>
+                </div>
+                <div class="mt-2">
+                    <div class="flex justify-between text-sm">
+                        <span>Vencimiento</span>
+                        <span class="font-medium">15/09/2023</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-white p-4 rounded-lg shadow border border-gray-200 status-card">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <p class="text-sm text-gray-500">Estado Actual</p>
+                        <p class="text-2xl font-bold text-green-600">Al día</p>
+                    </div>
+                    <div class="bg-green-100 p-3 rounded-full">
+                        <i class="fas fa-check-circle text-green-600 text-xl"></i>
+                    </div>
+                </div>
+                <div class="mt-2">
+                    <div class="flex justify-between text-sm">
+                        <span>Próximo vencimiento</span>
+                        <span class="font-medium">15/09/2023</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Reporte de ITBIS -->
+        <div class="tax-section bg-white rounded-lg shadow-md p-6 mb-6">
+            <div class="card-header">
+                <h3 class="text-lg font-medium text-gray-800 mb-4"><i class="fas fa-file-invoice-dollar text-blue-600 mr-2"></i> Reporte de ITBIS</h3>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-6 mb-6">
+                <div class="border border-gray-200 rounded-lg p-4">
+                    <h4 class="text-md font-medium text-gray-700 mb-3">ITBIS Débito Fiscal</h4>
+                    <div class="text-2xl font-bold text-gray-800 mb-2">RD$ 64,320.00</div>
+                    <div class="text-sm text-gray-500">Impuesto cobrado en ventas</div>
+                </div>
+                
+                <div class="border border-gray-200 rounded-lg p-4">
+                    <h4 class="text-md font-medium text-gray-700 mb-3">ITBIS Crédito Fiscal</h4>
+                    <div class="text-2xl font-bold text-gray-800 mb-2">RD$ 25,570.00</div>
+                    <div class="text-sm text-gray-500">Impuesto pagado en compras</div>
+                </div>
+            </div>
+            
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4" id="itbis-report-box">
+                <div class="flex justify-between items-center">
+                    <h4 class="text-md font-medium text-gray-700">ITBIS por Pagar</h4>
+                    <div class="text-2xl font-bold text-blue-600">RD$ 38,750.00</div>
+                </div>
+                <div class="mt-2 text-sm text-gray-600">
+                    Vencimiento: 20 de Septiembre, 2023
+                </div>
+            </div>
+            
+            <div class="chart-container">
+                <canvas id="itbisChart"></canvas>
+            </div>
+            
+            <div class="flex flex-wrap gap-3 mt-6">
+                <button class="button bg-blue-600 export-btn" data-export-type="pdf" data-tax-type="itbis">
+                    <i class="fas fa-file-pdf mr-2"></i> Exportar PDF
+                </button>
+                <button class="button bg-green-600 export-btn" data-export-type="excel" data-tax-type="itbis">
+                    <i class="fas fa-file-excel mr-2"></i> Exportar Excel
+                </button>
+                <button class="button bg-purple-600 export-btn" data-export-type="xml" data-tax-type="itbis">
+                    <i class="fas fa-file-code mr-2"></i> Exportar XML (DGII)
+                </button>
+                <button class="button bg-yellow-600 pay-now-btn" data-tax-type="itbis" data-amount="38750">
+                    <i class="fas fa-money-check mr-2"></i> Pagar Ahora
+                </button>
+                <button class="button bg-orange-600" id="show-itbis-history">
+                    <i class="fas fa-history mr-2"></i> Ver Histórico
+                </button>
+            </div>
+            
+            <div class="history-section mt-6" id="itbis-history" style="display: none;">
+                <h4 class="text-md font-medium text-gray-700 mb-3">Histórico de Pagos ITBIS</h4>
+                <table class="history-table">
+                    <thead>
+                        <tr>
+                            <th>Periodo</th>
+                            <th>Monto</th>
+                            <th>Fecha de Pago</th>
+                            <th>Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="paid-row">
+                            <td>Abril 2023</td>
+                            <td>RD$ 35,200.00</td>
+                            <td>20/05/2023</td>
+                            <td><span class="paid-status">Pagado</span></td>
+                        </tr>
+                        <tr class="paid-row">
+                            <td>Marzo 2023</td>
+                            <td>RD$ 32,150.00</td>
+                            <td>20/04/2023</td>
+                            <td><span class="paid-status">Pagado</span></td>
+                        </tr>
+                        <tr class="paid-row">
+                            <td>Febrero 2023</td>
+                            <td>RD$ 28,900.00</td>
+                            <td>20/03/2023</td>
+                            <td><span class="paid-status">Pagado</span></td>
+                        </tr>
+                        <tr class="pending-row">
+                            <td>Mayo 2023</td>
+                            <td>RD$ 38,750.00</td>
+                            <td>20/06/2023</td>
+                            <td><span style="background-color:#fef3c7;color:#d97706;padding:6px 12px;border-radius:20px;font-weight:500;font-size:14px;">Pendiente</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Reporte de ISR -->
+        <div class="tax-section bg-white rounded-lg shadow-md p-6">
+            <div class="card-header">
+                <h3 class="text-lg font-medium text-gray-800 mb-4"><i class="fas fa-file-invoice text-purple-600 mr-2"></i> Reporte de ISR</h3>
+            </div>
+            
+            <div class="grid grid-cols-3 gap-4 mb-6">
+                <div class="border border-gray-200 rounded-lg p-4">
+                    <h4 class="text-md font-medium text-gray-700 mb-2">Ingresos Gravables</h4>
+                    <div class="text-xl font-bold text-gray-800">RD$ 325,400.00</div>
+                </div>
+                
+                <div class="border border-gray-200 rounded-lg p-4">
+                    <h4 class="text-md font-medium text-gray-700 mb-2">Tasa Aplicada</h4>
+                    <div class="text-xl font-bold text-gray-800">27%</div>
+                </div>
+                
+                <div class="border border-gray-200 rounded-lg p-4">
+                    <h4 class="text-md font-medium text-gray-700 mb-2">Retenciones</h4>
+                    <div class="text-xl font-bold text-gray-800">RD$ 5,320.00</div>
+                </div>
+            </div>
+            
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4" id="isr-report-box">
+                <div class="flex justify-between items-center">
+                    <h4 class="text-md font-medium text-gray-700">ISR por Pagar</h4>
+                    <div class="text-2xl font-bold text-blue-600">RD$ 22,400.00</div>
+                </div>
+                <div class="mt-2 text-sm text-gray-600">
+                    Vencimiento: 15 de Septiembre, 2023
+                </div>
+            </div>
+            
+            <div class="chart-container">
+                <canvas id="isrChart"></canvas>
+            </div>
+            
+            <div class="flex flex-wrap gap-3 mt-6">
+                <button class="button bg-blue-600 export-btn" data-export-type="pdf" data-tax-type="isr">
+                    <i class="fas fa-file-pdf mr-2"></i> Exportar PDF
+                </button>
+                <button class="button bg-green-600 export-btn" data-export-type="excel" data-tax-type="isr">
+                    <i class="fas fa-file-excel mr-2"></i> Exportar Excel
+                </button>
+                <button class="button bg-purple-600 export-btn" data-export-type="xml" data-tax-type="isr">
+                    <i class="fas fa-file-code mr-2"></i> Exportar XML (DGII)
+                </button>
+                <button class="button bg-yellow-600 pay-now-btn" data-tax-type="isr" data-amount="22400">
+                    <i class="fas fa-money-check mr-2"></i> Pagar Ahora
+                </button>
+                <button class="button bg-orange-600" id="show-isr-history">
+                    <i class="fas fa-history mr-2"></i> Ver Histórico
+                </button>
+            </div>
+            
+            <div class="history-section mt-6" id="isr-history" style="display: none;">
+                <h4 class="text-md font-medium text-gray-700 mb-3">Histórico de Pagos ISR</h4>
+                <table class="history-table">
+                    <thead>
+                        <tr>
+                            <th>Periodo</th>
+                            <th>Monto</th>
+                            <th>Fecha de Pago</th>
+                            <th>Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="paid-row">
+                            <td>Abril 2023</td>
+                            <td>RD$ 20,150.00</td>
+                            <td>15/05/2023</td>
+                            <td><span class="paid-status">Pagado</span></td>
+                        </tr>
+                        <tr class="paid-row">
+                            <td>Marzo 2023</td>
+                            <td>RD$ 18,900.00</td>
+                            <td>15/04/2023</td>
+                            <td><span class="paid-status">Pagado</span></td>
+                        </tr>
+                        <tr class="paid-row">
+                            <td>Febrero 2023</td>
+                            <td>RD$ 17,450.00</td>
+                            <td>15/03/2023</td>
+                            <td><span class="paid-status">Pagado</span></td>
+                        </tr>
+                        <tr class="pending-row">
+                            <td>Mayo 2023</td>
+                            <td>RD$ 22,400.00</td>
+                            <td>15/06/2023</td>
+                            <td><span style="background-color:#fef3c7;color:#d97706;padding:6px 12px;border-radius:20px;font-weight:500;font-size:14px;">Pendiente</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal de Pago -->
+    <div class="modal" id="paymentModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Pagar Impuesto</h2>
+                <button class="close-button" id="closeModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="taxType">Tipo de Impuesto</label>
+                    <input type="text" id="taxType" class="form-control" readonly>
+                </div>
+                <div class="form-group">
+                    <label for="taxAmount">Monto a Pagar (RD$)</label>
+                    <input type="text" id="taxAmount" class="form-control" readonly>
+                </div>
+                <div class="form-group">
+                    <label for="paymentMethod">Método de Pago</label>
+                    <select id="paymentMethod" class="form-control">
+                        <option value="">Seleccione un método</option>
+                        <option value="transfer">Transferencia Bancaria</option>
+                        <option value="credit">Tarjeta de Crédito</option>
+                        <option value="debit">Tarjeta de Débito</option>
+                        <option value="cash">Efectivo</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="paymentDate">Fecha de Pago</label>
+                    <input type="date" id="paymentDate" class="form-control" value="2023-06-20">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="button btn-secondary" id="cancelPayment">Cancelar</button>
+                <button class="button bg-blue-600" id="confirmPayment">Confirmar Pago</button>
+            </div>
+        </div>
+    </div>
+    <script src="/static/js/Mimpuestos.js"></script>
+
+</body>
+</html>

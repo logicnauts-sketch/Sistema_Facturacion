@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Control de Ventas - Productos</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/static/css/controlventas.css">
+</head>
+<body>
+    <main class="main-container">
+        <div class="max-width-container">
+            <!-- Título principal -->
+            <div class="section-header">
+                <h1 class="main-title">Control de Ventas - Productos</h1>
+                <p class="subtitle">Dashboard de análisis y reportes</p>
+            </div>
+            
+            <!-- Filtros de Período -->
+            <div class="card filter-container">
+                <div class="filter-header">
+                    <h2 class="section-title">Filtros de Período</h2>
+                    <div class="filter-buttons">
+                        <button class="period-btn active">
+                            <i class="fas fa-calendar-day"></i>
+                            Hoy
+                        </button>
+                        <button class="period-btn">
+                            <i class="fas fa-calendar-week"></i>
+                            Esta semana
+                        </button>
+                        <button class="period-btn">
+                            <i class="fas fa-calendar"></i>
+                            Este mes
+                        </button>
+                        <button class="period-btn">
+                            <i class="fas fa-calendar-alt"></i>
+                            Este año
+                        </button>
+                        <div class="custom-range-container">
+                            <button id="custom-range-btn" class="period-btn">
+                                <i class="fas fa-calendar-check"></i>
+                                Rango personalizado
+                            </button>
+                            <div id="custom-range-panel" class="custom-range-panel">
+                                <div class="custom-range-form">
+                                    <label>Desde</label>
+                                    <input type="date" class="input-date">
+                                    <label>Hasta</label>
+                                    <input type="date" class="input-date">
+                                    <button class="apply-btn">Aplicar</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Resumen rápido -->
+            <div class="metrics-grid">
+                <div class="metric-card border-primary">
+                    <div class="metric-icon bg-blue">
+                        <i class="fas fa-shopping-cart"></i>
+                    </div>
+                    <div class="metric-info">
+                        <p class="metric-label">Ventas Totales</p>
+                        <p id="ventas-totales" class="metric-value">$15,280.50</p>
+                        <p class="metric-trend positive"><i class="fas fa-arrow-up"></i> 12.5% vs mes anterior</p>
+                    </div>
+                </div>
+                <div class="metric-card border-secondary">
+                    <div class="metric-icon bg-green">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <div class="metric-info">
+                        <p class="metric-label">Promedio por Venta</p>
+                        <p id="promedio-venta" class="metric-value">$128.75</p>
+                        <p class="metric-trend positive"><i class="fas fa-arrow-up"></i> 5.2% vs mes anterior</p>
+                    </div>
+                </div>
+                <div class="metric-card border-orange">
+                    <div class="metric-icon bg-orange">
+                        <i class="fas fa-box"></i>
+                    </div>
+                    <div class="metric-info">
+                        <p class="metric-label">Productos Vendidos</p>
+                        <p id="productos-vendidos" class="metric-value">1,280</p>
+                        <p class="metric-trend">15% productos nuevos</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Reportes por Categoría y Producto -->
+            <div class="card report-container">
+                <div class="report-header">
+                    <h2 class="section-title">Reportes de Ventas</h2>
+                    <div class="report-tabs">
+                        <button id="tab-producto" class="tab-btn active">
+                            <i class="fas fa-box"></i>
+                            Producto
+                        </button>
+                        <button id="tab-categoria" class="tab-btn">
+                            <i class="fas fa-tag"></i>
+                            Categoría
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Contenido de Tabs -->
+                <div class="tab-content">
+                    <!-- Producto -->
+                    <div id="tab-content-producto" class="tab-pane active">
+                        <div class="report-content">
+                            <div class="chart-container">
+                                <div class="chart-card">
+                                    <div class="chart-header">
+                                        <h3 class="chart-title">Ventas por Producto</h3>
+                                        <div class="export-buttons">
+                                            <button class="export-btn excel">
+                                                <i class="fas fa-file-excel"></i>
+                                                Excel
+                                            </button>
+                                            <button class="export-btn pdf">
+                                                <i class="fas fa-file-pdf"></i>
+                                                PDF
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="chart-canvas">
+                                        <canvas id="productChart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="top-list-container">
+                                <div class="top-list-card">
+                                    <h3 class="top-list-title">Top Productos</h3>
+                                    <div class="top-list">
+                                        <div class="top-list-item">
+                                            <div class="top-list-item-label">
+                                                <div class="color-dot color-1"></div>
+                                                <span>Laptop Pro 15"</span>
+                                            </div>
+                                            <span class="top-list-item-value">$3,250.00</span>
+                                        </div>
+                                        <div class="top-list-item">
+                                            <div class="top-list-item-label">
+                                                <div class="color-dot color-2"></div>
+                                                <span>Smartphone X</span>
+                                            </div>
+                                            <span class="top-list-item-value">$2,780.50</span>
+                                        </div>
+                                        <div class="top-list-item">
+                                            <div class="top-list-item-label">
+                                                <div class="color-dot color-3"></div>
+                                                <span>Tablet Elite</span>
+                                            </div>
+                                            <span class="top-list-item-value">$1,950.75</span>
+                                        </div>
+                                        <div class="top-list-item">
+                                            <div class="top-list-item-label">
+                                                <div class="color-dot color-4"></div>
+                                                <span>Monitor 27"</span>
+                                            </div>
+                                            <span class="top-list-item-value">$1,780.25</span>
+                                        </div>
+                                        <div class="top-list-item">
+                                            <div class="top-list-item-label">
+                                                <div class="color-dot color-5"></div>
+                                                <span>Teclado Mecánico</span>
+                                            </div>
+                                            <span class="top-list-item-value">$1,250.00</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Tabla de Productos -->
+                        <div class="table-card">
+                            <div class="table-header">
+                                <h3 class="table-title">Detalle de Ventas por Producto</h3>
+                                <div class="table-controls">
+                                    <div class="search-container">
+                                        <i class="fas fa-search search-icon"></i>
+                                        <input type="text" placeholder="Buscar producto..." class="search-input">
+                                    </div>
+                                    <button class="filter-btn">
+                                        <i class="fas fa-filter"></i>
+                                        Filtros
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="table-responsive">
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th class="sortable">
+                                                <span>Producto</span>
+                                                <i class="fas fa-sort sort-icon"></i>
+                                            </th>
+                                            <th class="sortable">
+                                                <span>Categoría</span>
+                                                <i class="fas fa-sort sort-icon"></i>
+                                            </th>
+                                            <th class="sortable">
+                                                <span>Total Ventas</span>
+                                                <i class="fas fa-sort sort-icon"></i>
+                                            </th>
+                                            <th class="sortable">
+                                                <span>Cantidad Vendida</span>
+                                                <i class="fas fa-sort sort-icon"></i>
+                                            </th>
+                                            <th>Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>
+                                                <div class="product-cell">
+                                                    <div class="product-avatar bg-blue">
+                                                        L
+                                                    </div>
+                                                    <div class="product-info">
+                                                        <div class="product-name">Laptop Pro 15"</div>
+                                                        <div class="product-price">$1,250.00</div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td class="product-category">Electrónicos</td>
+                                            <td class="sales-total">$3,250.00</td>
+                                            <td class="quantity-sold">42</td>
+                                            <td class="actions">
+                                                <button class="view-btn">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                                <button class="download-btn">
+                                                    <i class="fas fa-download"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td>
+                                                <div class="product-cell">
+                                                    <div class="product-avatar bg-green">
+                                                        S
+                                                    </div>
+                                                    <div class="product-info">
+                                                        <div class="product-name">Smartphone X</div>
+                                                        <div class="product-price">$799.99</div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td class="product-category">Móviles</td>
+                                            <td class="sales-total">$2,780.50</td>
+                                            <td class="quantity-sold">35</td>
+                                            <td class="actions">
+                                                <button class="view-btn">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                                <button class="download-btn">
+                                                    <i class="fas fa-download"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td>
+                                                <div class="product-cell">
+                                                    <div class="product-avatar bg-purple">
+                                                        T
+                                                    </div>
+                                                    <div class="product-info">
+                                                        <div class="product-name">Tablet Elite</div>
+                                                        <div class="product-price">$450.00</div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td class="product-category">Tablets</td>
+                                            <td class="sales-total">$1,950.75</td>
+                                            <td class="quantity-sold">28</td>
+                                            <td class="actions">
+                                                <button class="view-btn">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                                <button class="download-btn">
+                                                    <i class="fas fa-download"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td>
+                                                <div class="product-cell">
+                                                    <div class="product-avatar bg-orange">
+                                                        M
+                                                    </div>
+                                                    <div class="product-info">
+                                                        <div class="product-name">Monitor 27"</div>
+                                                        <div class="product-price">$299.99</div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td class="product-category">Monitores</td>
+                                            <td class="sales-total">$1,780.25</td>
+                                            <td class="quantity-sold">22</td>
+                                            <td class="actions">
+                                                <button class="view-btn">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                                <button class="download-btn">
+                                                    <i class="fas fa-download"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td>
+                                                <div class="product-cell">
+                                                    <div class="product-avatar bg-red">
+                                                        T
+                                                    </div>
+                                                    <div class="product-info">
+                                                        <div class="product-name">Teclado Mecánico</div>
+                                                        <div class="product-price">$89.99</div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td class="product-category">Accesorios</td>
+                                            <td class="sales-total">$1,250.00</td>
+                                            <td class="quantity-sold">18</td>
+                                            <td class="actions">
+                                                <button class="view-btn">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                                <button class="download-btn">
+                                                    <i class="fas fa-download"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="table-footer">
+                                <div class="table-summary">Mostrando 5 de 45 productos</div>
+                                <div class="pagination">
+                                    <button class="pagination-btn prev">
+                                        <i class="fas fa-chevron-left"></i>
+                                    </button>
+                                    <button class="pagination-btn active">1</button>
+                                    <button class="pagination-btn">2</button>
+                                    <button class="pagination-btn">3</button>
+                                    <button class="pagination-btn next">
+                                        <i class="fas fa-chevron-right"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Categoría -->
+                    <div id="tab-content-categoria" class="tab-pane">
+                        <div class="report-content">
+                            <div class="chart-container">
+                                <div class="chart-card">
+                                    <div class="chart-header">
+                                        <h3 class="chart-title">Ventas por Categoría</h3>
+                                        <div class="export-buttons">
+                                            <button class="export-btn excel">
+                                                <i class="fas fa-file-excel"></i>
+                                                Excel
+                                            </button>
+                                            <button class="export-btn pdf">
+                                                <i class="fas fa-file-pdf"></i>
+                                                PDF
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="chart-canvas">
+                                        <canvas id="categoryChart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="top-list-container">
+                                <div class="top-list-card">
+                                    <h3 class="top-list-title">Resumen por Categoría</h3>
+                                    <div class="top-list">
+                                        <div class="top-list-item">
+                                            <div class="top-list-item-label">
+                                                <div class="color-dot color-1"></div>
+                                                <span>Electrónicos</span>
+                                            </div>
+                                            <span class="top-list-item-value">$6,250.00</span>
+                                        </div>
+                                        <div class="top-list-item">
+                                            <div class="top-list-item-label">
+                                                <div class="color-dot color-2"></div>
+                                                <span>Móviles</span>
+                                            </div>
+                                            <span class="top-list-item-value">$4,780.50</span>
+                                        </div>
+                                        <div class="top-list-item">
+                                            <div class="top-list-item-label">
+                                                <div class="color-dot color-3"></div>
+                                                <span>Accesorios</span>
+                                            </div>
+                                            <span class="top-list-item-value">$3,950.75</span>
+                                        </div>
+                                        <div class="top-list-item">
+                                            <div class="top-list-item-label">
+                                                <div class="color-dot color-4"></div>
+                                                <span>Tablets</span>
+                                            </div>
+                                            <span class="top-list-item-value">$2,780.25</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Spinner -->
+        <div id="spinner" class="spinner-overlay">
+            <div class="spinner-modal">
+                <div class="spinner"></div>
+                <p class="spinner-text">Cargando datos...</p>
+            </div>
+        </div>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // Simulación de funcionalidad de tabs
+        document.querySelectorAll('.tab-btn').forEach(button => {
+            button.addEventListener('click', () => {
+                // Quitar clase active a todos los botones y paneles
+                document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+                document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('active'));
+                
+                // Agregar clase active al botón clickeado
+                button.classList.add('active');
+                
+                // Mostrar el panel correspondiente
+                const targetPane = button.id === 'tab-producto' ? 
+                    document.getElementById('tab-content-producto') : 
+                    document.getElementById('tab-content-categoria');
+                
+                targetPane.classList.add('active');
+            });
+        });
+
+        // Simulación de rango personalizado
+        document.getElementById('custom-range-btn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            const panel = document.getElementById('custom-range-panel');
+            panel.style.display = panel.style.display === 'block' ? 'none' : 'block';
+        });
+
+        // Cerrar panel al hacer clic fuera
+        document.addEventListener('click', (e) => {
+            const panel = document.getElementById('custom-range-panel');
+            if (!e.target.closest('.custom-range-container') && panel.style.display === 'block') {
+                panel.style.display = 'none';
+            }
+        });
+
+        // Simular carga de datos
+        document.querySelectorAll('.period-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                // Mostrar spinner
+                document.getElementById('spinner').style.display = 'flex';
+                
+                // Quitar active a todos los botones
+                document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+                
+                // Agregar active al botón clickeado
+                this.classList.add('active');
+                
+                // Simular carga de datos
+                setTimeout(() => {
+                    document.getElementById('spinner').style.display = 'none';
+                }, 1500);
+            });
+        });
+
+        // Simular gráficos
+        window.addEventListener('load', () => {
+            // Simulación de gráficos con Chart.js
+            const productCtx = document.getElementById('productChart').getContext('2d');
+            const productChart = new Chart(productCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['Laptop Pro', 'Smartphone X', 'Tablet Elite', 'Monitor 27"', 'Teclado'],
+                    datasets: [{
+                        label: 'Ventas ($)',
+                        data: [3250, 2780, 1950, 1780, 1250],
+                        backgroundColor: '#3B82F6',
+                        borderColor: '#2563EB',
+                        borderWidth: 1,
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        }
+                    }
+                }
+            });
+
+            const categoryCtx = document.getElementById('categoryChart').getContext('2d');
+            const categoryChart = new Chart(categoryCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Electrónicos', 'Móviles', 'Accesorios', 'Tablets'],
+                    datasets: [{
+                        data: [6250, 4780, 3950, 2780],
+                        backgroundColor: ['#3B82F6', '#10B981', '#6366F1', '#F97316'],
+                        borderWidth: 0,
+                        hoverOffset: 10
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                padding: 20,
+                                usePointStyle: true,
+                                pointStyle: 'circle'
+                            }
+                        }
+                    },
+                    cutout: '65%'
+                }
+            });
+        });
+    </script>
+</body>
+</html>

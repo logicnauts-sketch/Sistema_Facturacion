@@ -1,0 +1,63 @@
+{% extends "home.html" %}
+
+{% block title %}Control de Versiones{% endblock %}
+
+    {% block styles %}
+    <link rel="stylesheet" href="/static/css/versiones.css">
+    <link href="https://cdn.jsdelivr.net/npm/notyf@3.9.0/notyf.min.css" rel="stylesheet">
+
+    {% endblock %}
+    
+
+
+{% block content %}
+    <div class="container">
+        <h1>Historial de Versiones</h1>
+        <a href="{{ url_for('home.home') }}" id="back-btn">Atrás</a>
+        <!-- Botón para comprobar actualizaciones dentro del contenedor -->
+        <button id="checkUpdateBtn" class="btn-comprobar">Comprobar Actualización</button>
+
+        <!-- Lista de versiones, inicialmente oculta -->
+        <ul class="version-list">
+            {% for dato in datos %}
+                <li class="version-item" onclick="toggleDetails(this)">
+                    <h3>{{ dato.nombre }}</h3>
+                    <p>{{ dato.fecha }}</p>
+                    <div class="version-details">
+                        <p><strong>Descripción:</strong> {{ dato.descripcion }}</p>
+                    </div>
+                </li>
+            {% endfor %}
+        </ul>
+        
+
+
+        <!-- Modal de carga -->
+        <div id="loadingModal" class="modal hidden" onclick="closeModal(event)">
+            <div class="modal-content">
+                <div class="spinner"></div> <!-- Spinner de carga -->
+                <p>Buscando actualizaciones...</p>
+                
+            </div>
+        </div>
+
+    <!-- Modal de actualización -->
+    <div id="updateModal" class="modal hidden" onclick="closeModal(event)">
+        <div class="modal-content">
+            <p id="updateMessage">Descargando...</p>
+            <button id="updateBtn" class="btn-actualizar">Actualizar</button>
+        </div>
+    </div>
+
+     
+
+        <div class="footer">
+            <p>Desarrollado por <a href="https://logicnauts.pythonanywhere.com/" target="_blank">LogicNauts</a></p>
+        </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+    <script src="/static/js/versiones.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/notyf@3.9.0/notyf.min.js"></script>
+{% endblock %}

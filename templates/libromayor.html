@@ -1,0 +1,171 @@
+{% extends "home.html" %}
+
+{% block title %}Módulo de Libro Mayor{% endblock %}
+
+    {% block styles %}
+    <link rel="stylesheet" href="/static/css/libromayor.css">
+    {% endblock %}
+    
+
+
+{% block content %}
+    <div class="container">
+        <div class="header">
+            <div>
+                <h1>Libro Mayor Contable</h1>
+                <p>Visualiza y gestiona los movimientos de tus cuentas contables</p>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <div class="account-name">Cuentas por Cobrar</div>
+                    <div class="account-period">Período: 01/08/2023 - 31/08/2023</div>
+                </div>
+                <div class="export-options">
+                    <button class="export-btn">
+                        <i class="fas fa-file-pdf"></i> PDF
+                    </button>
+                    <button class="export-btn">
+                        <i class="fas fa-file-excel"></i> Excel
+                    </button>
+                </div>
+            </div>
+            
+            <div class="filters">
+                <div class="filter-group">
+                    <label for="accountSelect">Seleccionar Cuenta</label>
+                    <select id="accountSelect">
+                        <option value="cash">Caja</option>
+                        <option value="bank">Bancos</option>
+                        <option value="receivables" selected>Cuentas por Cobrar</option>
+                        <option value="inventory">Inventario</option>
+                        <option value="fixed-assets">Activos Fijos</option>
+                        <option value="payables">Cuentas por Pagar</option>
+                        <option value="loans">Préstamos</option>
+                        <option value="capital">Capital</option>
+                    </select>
+                </div>
+                
+                <div class="filter-group">
+                    <label>Fecha</label>
+                    <div class="filters-row">
+                        <div class="date-range">
+                            <input type="date" id="startDate" value="2023-08-01">
+                            <span>a</span>
+                            <input type="date" id="endDate" value="2023-08-31">
+                        </div>
+                        <button id="filterBtn">
+                            <i class="fas fa-filter"></i> Filtrar
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="summary-grid">
+                <div class="summary-card">
+                    <div class="summary-label">Saldo Anterior</div>
+                    <div class="summary-value neutral">RD$ 125,400.00</div>
+                </div>
+                
+                <div class="summary-card">
+                    <div class="summary-label">Total Débitos</div>
+                    <div class="summary-value positive">RD$ 87,500.00</div>
+                </div>
+                
+                <div class="summary-card">
+                    <div class="summary-label">Total Créditos</div>
+                    <div class="summary-value negative">RD$ 42,300.00</div>
+                </div>
+                
+                <div class="summary-card current">
+                    <div class="summary-label">Saldo Actual</div>
+                    <div class="summary-value positive">RD$ 170,600.00</div>
+                </div>
+            </div>
+            
+            <div class="table-container">
+                <table class="movements-table">
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Asiento</th>
+                            <th>Descripción</th>
+                            <th class="text-right">Débito</th>
+                            <th class="text-right">Crédito</th>
+                            <th class="text-right">Saldo</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>01/08/2023</td>
+                            <td class="text-bold">#AS-001</td>
+                            <td>Saldo inicial</td>
+                            <td class="text-right"></td>
+                            <td class="text-right"></td>
+                            <td class="text-right text-bold">RD$ 125,400.00</td>
+                        </tr>
+                        <tr>
+                            <td>05/08/2023</td>
+                            <td class="text-bold">#AS-025</td>
+                            <td>Venta a Cliente A</td>
+                            <td class="text-right text-bold positive">RD$ 25,000.00</td>
+                            <td class="text-right"></td>
+                            <td class="text-right text-bold">RD$ 150,400.00</td>
+                        </tr>
+                        <tr>
+                            <td>10/08/2023</td>
+                            <td class="text-bold">#AS-037</td>
+                            <td>Pago Cliente B</td>
+                            <td class="text-right"></td>
+                            <td class="text-right text-bold negative">RD$ 15,000.00</td>
+                            <td class="text-right text-bold">RD$ 135,400.00</td>
+                        </tr>
+                        <tr>
+                            <td>15/08/2023</td>
+                            <td class="text-bold">#AS-042</td>
+                            <td>Venta a Cliente C</td>
+                            <td class="text-right text-bold positive">RD$ 42,300.00</td>
+                            <td class="text-right"></td>
+                            <td class="text-right text-bold">RD$ 177,700.00</td>
+                        </tr>
+                        <tr>
+                            <td>20/08/2023</td>
+                            <td class="text-bold">#AS-056</td>
+                            <td>Pago Cliente A</td>
+                            <td class="text-right"></td>
+                            <td class="text-right text-bold negative">RD$ 7,100.00</td>
+                            <td class="text-right text-bold">RD$ 170,600.00</td>
+                        </tr>
+                        <tr>
+                            <td>25/08/2023</td>
+                            <td class="text-bold">#AS-062</td>
+                            <td>Venta a Cliente D</td>
+                            <td class="text-right text-bold positive">RD$ 18,750.00</td>
+                            <td class="text-right"></td>
+                            <td class="text-right text-bold">RD$ 189,350.00</td>
+                        </tr>
+                        <tr>
+                            <td>28/08/2023</td>
+                            <td class="text-bold">#AS-071</td>
+                            <td>Pago Cliente C</td>
+                            <td class="text-right"></td>
+                            <td class="text-right text-bold negative">RD$ 10,500.00</td>
+                            <td class="text-right text-bold">RD$ 178,850.00</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <div class="floating-btn" id="addMovementBtn">
+        <i class="fas fa-plus"></i>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/libromayor.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}

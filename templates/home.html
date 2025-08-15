@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Sistema de Facturación Pro {% endblock %}</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/notyf@3/notyf.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/static/css/home.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    {% block styles %}
+    {% endblock %}
+
+</head>
+
+<body id="appBody" data-rol="{{ session.get('rol', '') }}">
+    {% block sidebar %}
+    <aside class="sidebar  {% if user_role != 'admin' %}collapsed{% endif %}" id="sidebar">
+        <div class="sidebar-header">
+            <div class="logo">
+                <i class="fas fa-file-invoice-dollar"></i>
+                <span>FacturaPro</span>
+            </div>
+        </div>
+        <nav class="sidebar-menu">
+
+            {% if session.rol == 'admin' %}
+            <!-- Elementos visibles para todos los usuarios -->
+            <a href="{{ url_for('home.home') }}" class="menu-item {% if request.path == '/home' %}active{% endif %}" data-module="inicio">
+                <i class="fas fa-home"></i>
+                <span>Inicio</span>
+            </a>
+            {% endif %}
+            
+            <a href="{{ url_for('facturacion.facturacion') }}" class="menu-item {% if request.path == '/facturacion' %}active{% endif %}" data-module="facturacion">
+                <i class="fas fa-receipt"></i>
+                <span>Facturación</span>
+            </a>
+            <a href="{{ url_for('caja.caja') }}" class="menu-item {% if request.path == '/caja' %}active{% endif %}" data-module="caja">
+                <i class="fas fa-cash-register"></i>
+                <span>Caja</span>
+            </a>
+            
+            <!-- Clientes solo para administradores -->
+            {% if session.rol == '1' %}
+            <a href="{{ url_for('clientes.clientes') }}" class="menu-item {% if request.path == '/clientes' %}active{% endif %}" data-module="clientes">
+                <i class="fas fa-users"></i>
+                <span>Clientes</span>
+            </a>
+            {% endif %}
+            
+            {% if session.rol == 'admin' %}
+            <a href="{{ url_for('proveedores.proveedores') }}" class="menu-item {% if request.path == '/proveedores' %}active{% endif %}" data-module="proveedores">
+                <i class="fas fa-truck"></i>
+                <span>Proveedores</span>
+            </a>
+            {% endif %}
+
+            {% if session.rol == 'admin' %}
+            <a href="{{ url_for('productos.productos_page') }}" class="menu-item {% if request.path == '/productos' %}active{% endif %}" data-section="products">
+                <i class="fas fa-box"></i>
+                <span>Productos</span>
+            </a>
+            {% endif %}
+
+            {% if session.rol == 'admin' %}
+            <a href="{{ url_for('inventario.inventario') }}" class="menu-item {% if request.path == '/inventario' %}active{% endif %}" data-section="inventory">
+                <i class="fas fa-warehouse"></i>
+                <span>Inventario</span>
+            </a>
+            {% endif %}
+
+            {% if session.rol == 'admin' %}
+            <a href="{{ url_for('usuarios.usuarios') }}" class="menu-item {% if request.path == '/usuarios' %}active{% endif %}" data-section="usuarios">
+                <i class="fas fa-users"></i>
+                <span>Usuarios</span>
+            </a>
+            {% endif %}
+
+            {% if session.rol == 'admin' %}
+            <a href="{{ url_for('controlventas.controlventas') }}" class="menu-item {% if request.path == '/controlventas' %}active{% endif %}" data-section="controlventas">
+                <i class="fas fa-chart-line"></i>
+                <span>Control de Ventas</span>
+            </a>
+            {% endif %}
+
+            {% if session.rol == '1' %}
+                <a href="{{ url_for('reportecajadiaria.reportecajadiaria') }}" class="menu-item {% if request.path == '/reportecajadiaria' %}active{% endif %}">
+                    <i class="fas fa-book-open"></i>
+                    <span>Caja Diaria</span>
+                </a>
+            {% endif %}
+
+
+
+            <!-- Contabilidad solo para administradores -->
+            {% if session.rol == '1' %}
+            <div class="accounting-dropdown">
+                <div class="dropdown-trigger" id="accountingBtn">
+                    <i class="fas fa-calculator"></i>
+                    <span>Contabilidad</span>
+                    <i class="fas fa-chevron-down dropdown-arrow"></i>
+                </div>
+                <div class="accounting-menu" id="accountingDropdown">
+                    <a href="{{ url_for('cuentascyp.cuentascyp') }}" class="accounting-item {% if request.path == '/cuentascyp' %}active{% endif %}">
+                        <i class="fas fa-file-invoice"></i>
+                        <span>Cuentas por Pagar/Cobrar</span>
+                    </a>
+                    <a href="{{ url_for('balanceeyi.balanceeyi') }}" class="accounting-item {% if request.path == '/balanceeyi' %}active{% endif %}">
+                        <i class="fas fa-money-bill-wave"></i>
+                        <span>Ingresos y egresos</span>
+                    </a>
+                    <a href="{{ url_for('librodiario.librodiario') }}" class="accounting-item {% if request.path == '/librodiario' %}active{% endif %}">
+                        <i class="fas fa-book"></i>
+                        <span>Libro Diario</span>
+                    </a>
+                    <a href="{{ url_for('libromayor.libromayor') }}" class="accounting-item {% if request.path == '/libromayor' %}active{% endif %}">
+                        <i class="fas fa-book-open"></i>
+                        <span>Libro Mayor</span>
+                    </a>
+                    <a href="{{ url_for('balancegeneral.balancegeneral') }}" class="accounting-item {% if request.path == '/balancegeneral' %}active{% endif %}">
+                        <i class="fas fa-balance-scale"></i>
+                        <span>Balance General</span>
+                    </a>
+                    <a href="{{ url_for('Eresultados.Eresultados') }}" data-section="results" class="accounting-item {% if request.path == '/Eresultados' %}active{% endif %}">
+                        <i class="fas fa-chart-line mr-3 text-blue-600"></i>
+                        <span>Estado de Resultados</span>
+                    </a>
+                    
+                    <!-- Submenú de Impuestos -->
+                    <div class="accounting-dropdown">
+                        <div class="dropdown-trigger" id="impuestosBtn">
+                            <i class="fas fa-calculator"></i>
+                            <span>Impuestos</span>
+                            <i class="fas fa-chevron-down dropdown-arrow"></i>
+                        </div>
+                        <div class="accounting-menu" id="impuestosDropdown">
+                            <a href="{{ url_for('itebis.itebis') }}" class="accounting-item">
+                                <i class="fas fa-balance-scale"></i>
+                                <span>Itebis</span>
+                            </a>
+                            <a href="{{ url_for('isr.isr') }}" class="accounting-item">
+                                <i class="fas fa-balance-scale"></i>
+                                <span>ISR</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            
+            <!-- Reportes solo para administradores -->
+            {% if session.rol == '1' %}
+            <div class="accounting-dropdown">
+                <div class="dropdown-trigger" id="reportesBtn">
+                    <i class="fas fa-file-pdf"></i>
+                    <span>Reportes</span>
+                    <i class="fas fa-chevron-down dropdown-arrow"></i>
+                </div>
+                <div class="accounting-menu" id="reportesDropdown">
+
+                </div>
+            </div>
+            {% endif %}
+
+            {% if session.rol == 'admin' %}
+            <!-- Configuración visible para todos -->
+            <div class="accounting-dropdown">
+                <div class="dropdown-trigger" id="configuracionBtn">
+                    <i class="fas fa-cog"></i>
+                    <span>Configuración</span>
+                    <i class="fas fa-chevron-down dropdown-arrow"></i>
+                </div>
+                <div class="accounting-menu" id="configuracionDropdown">
+                    <a href="{{ url_for('impresoras.impresora') }}" class="accounting-item">
+                        <i class="fas fa-file-pdf"></i>
+                        <span>Impresora</span>
+                    </a>
+                    <a href="{{ url_for('verifone.verifone') }}" class="accounting-item {% if request.path == '/configuracion' %}active{% endif %}">
+                        <i class="fas fa-credit-card"></i>
+                        <span>Verifone</span>
+                    </a> 
+                   <a href="{{ url_for('empresa.obtener_empresa') }}" class="accounting-item {% if request.path == '/configuracion' %}active{% endif %}">
+                        <i class="fas fa-building"></i>
+                        <span>Empresa</span>
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+
+            {% if session.rol == '1' %}
+            <a href="{{ url_for('versiones.versiones') }}" class="menu-item" data-module="configuracion">
+                <i class="fas fa-code-branch"></i>
+                <span>Versiones</span>
+            </a>
+            {% endif %}
+        </nav>
+        <div class="sidebar-footer">
+            Sistema de Facturación v1.0
+        </div>
+    </aside>
+    {% endblock %}
+
+
+    <!-- Contenedor principal (topbar + contenido) -->
+    <div class="app-container" id="appContainer">
+        <!-- Top Bar con dropdown -->
+    <div class="topbar">
+        <button class="menu-toggle" id="menuToggle">
+            <i class="fas fa-bars"></i>
+        </button>
+        <div class="search-container">
+            <i class="fas fa-search search-icon"></i>
+            <input type="text" class="search-input" placeholder="Buscar productos, códigos...">
+        </div>
+        <div class="user-dropdown">
+            <div class="user-profile" id="userBtn">
+                <div class="user-info">
+                    <div class="user-name">{{ session.nombre_completo }}</div>
+                    <div class="user-role">
+                        {% if session.rol == 'admin' %}Administrador/a{% else %}Empleado/a{% endif %}
+                    </div>
+                </div>
+                <div class="user-avatar">{{ session.iniciales }}</div>
+            </div>
+            <div class="dropdown-menu" id="dropdownMenu">
+                <a href="#" class="dropdown-item">
+                    <i class="fas fa-user-circle"></i>
+                    <span>Ver perfil</span>
+                </a>
+                <a href="{{ url_for('login.logout') }}" class="dropdown-item">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Cerrar sesión</span>
+                </a>
+            </div>
+        </div>
+    </div>
+
+
+        <!-- Contenido principal -->
+        <div class="main-content {% if session.rol == 'admin' %}expanded-content{% endif %}" id="mainContent">
+            {% block content %}
+            <main>
+                <!-- Contenido del módulo Inicio -->
+                <div class="module-content active" id="inicioContent">
+                    <div class="content-header">
+                        <div class="breadcrumb">
+                            <a href="#">Inicio</a>
+                            <span class="separator">/</span>
+                            <span>Panel de Control</span>
+                        </div>
+                        <h2 class="content-title">Panel de Control</h2>
+                        <p class="content-subtitle">Resumen de actividades y estadísticas</p>
+                    </div>
+
+                    <div class="card-grid">
+                        <!-- Tarjeta de Proveedores -->
+                        <div class="card fade-in">
+                            <div class="card-header">
+                                <h3 class="card-title">Proveedores</h3>
+                                <div class="card-icon blue">
+                                    <i class="fas fa-file-invoice"></i>
+                                </div>
+                            </div>
+                            <div class="card-value" id="totalProveedores">{{ total_proveedores }}</div>
+                        </div>
+
+                        <!-- Tarjeta de Ingresos Totales -->
+                        <div class="card fade-in" style="animation-delay: 0.2s;">
+                            <div class="card-header">
+                                <h3 class="card-title">Ingresos Totales</h3>
+                                <div class="card-icon orange">
+                                    <i class="fas fa-dollar-sign"></i>
+                                </div>
+                            </div>
+                            <div class="card-value" id="totalIngresos">${{ "{:,.2f}".format(total_ingresos) }}</div>
+                        </div>
+
+                        <!-- Tarjeta de Pagos Pendientes -->
+                        <div class="card fade-in" style="animation-delay: 0.3s;">
+                            <div class="card-header">
+                                <h3 class="card-title">Pagos Pendientes</h3>
+                                <div class="card-icon purple">
+                                    <i class="fas fa-clock"></i>
+                                </div>
+                            </div>
+                            <div class="card-value" id="cuentasPendientes">{{ cuentas_pendientes }}</div>
+                            <div class="card-footer">
+                                <span class="negative" id="cuentasVencidas">
+                                    <i class="fas fa-exclamation-circle"></i> 
+                                    {{ cuentas_vencidas }} vencidas
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Vista de carpetas -->
+                    <!-- <div class="folders-section fade-in" style="animation-delay: 0.3s;">
+                        <div class="section-header">
+                            <h3 class="section-title">Acceso Rápido</h3>
+                        </div>
+                        <div class="folder-grid">
+                            <div class="folder-card">
+                                <div class="folder-icon">
+                                    <i class="fas fa-file-invoice"></i>
+                                </div>
+                                <div class="folder-name">Facturas</div>
+                                <div class="folder-info">42 documentos</div>
+                            </div>
+                            <div class="folder-card">
+                                <div class="folder-icon">
+                                    <i class="fas fa-users"></i>
+                                </div>
+                                <div class="folder-name">Clientes</div>
+                                <div class="folder-info">128 registros</div>
+                            </div>
+                            <div class="folder-card">
+                                <div class="folder-icon">
+                                    <i class="fas fa-truck"></i>
+                                </div>
+                                <div class="folder-name">Proveedores</div>
+                                <div class="folder-info">24 registros</div>
+                            </div>
+                            <div class="folder-card">
+                                <div class="folder-icon">
+                                    <i class="fas fa-box"></i>
+                                </div>
+                                <div class="folder-name">Productos</div>
+                                <div class="folder-info">56 artículos</div>
+                            </div>
+                            <div class="folder-card">
+                                <div class="folder-icon">
+                                    <i class="fas fa-chart-bar"></i>
+                                </div>
+                                <div class="folder-name">Reportes</div>
+                                <div class="folder-info">12 documentos</div>
+                            </div>
+                            <div class="folder-card">
+                                <div class="folder-icon">
+                                    <i class="fas fa-cog"></i>
+                                </div>
+                                <div class="folder-name">Configuración</div>
+                                <div class="folder-info">Ajustes del sistema</div>
+                            </div>
+                        </div>
+                    </div> -->
+
+                    <div class="chart-container fade-in" style="animation-delay: 0.4s;">
+                        <div class="chart-header">
+                            <h3 class="chart-title">Ingresos Mensuales</h3>
+                            <div class="chart-actions">
+                                <button class="chart-btn active" data-range="month">Mensual</button>
+                                <button class="chart-btn" data-range="quarter">Trimestral</button>
+                                <button class="chart-btn" data-range="year">Anual</button>
+                            </div>
+                        </div>
+                        <div class="chart" id="revenueChart">
+                            <div class="bar" style="height: 30%;" data-month="Enero" data-amount="12500">
+                                <div class="bar-label">Ene</div>
+                                <div class="bar-tooltip">Enero: $12,500</div>
+                            </div>
+                            <div class="bar" style="height: 45%;" data-month="Febrero" data-amount="18750">
+                                <div class="bar-label">Feb</div>
+                                <div class="bar-tooltip">Febrero: $18,750</div>
+                            </div>
+                            <div class="bar" style="height: 60%;" data-month="Marzo" data-amount="25000">
+                                <div class="bar-label">Mar</div>
+                                <div class="bar-tooltip">Marzo: $25,000</div>
+                            </div>
+                            <div class="bar" style="height: 80%;" data-month="Abril" data-amount="33300">
+                                <div class="bar-label">Abr</div>
+                                <div class="bar-tooltip">Abril: $33,300</div>
+                            </div>
+                            <div class="bar" style="height: 65%;" data-month="Mayo" data-amount="27100">
+                                <div class="bar-label">May</div>
+                                <div class="bar-tooltip">Mayo: $27,100</div>
+                            </div>
+                            <div class="bar" style="height: 75%;" data-month="Junio" data-amount="31250">
+                                <div class="bar-label">Jun</div>
+                                <div class="bar-tooltip">Junio: $31,250</div>
+                            </div>
+                            <div class="bar" style="height: 90%;" data-month="Julio" data-amount="37500">
+                                <div class="bar-label">Jul</div>
+                                <div class="bar-tooltip">Julio: $37,500</div>
+                            </div>
+                            <div class="bar" style="height: 100%;" data-month="Agosto" data-amount="41670">
+                                <div class="bar-label">Ago</div>
+                                <div class="bar-tooltip">Agosto: $41,670</div>
+                            </div>
+                            <div class="bar" style="height: 85%;" data-month="Septiembre" data-amount="35420">
+                                <div class="bar-label">Sep</div>
+                                <div class="bar-tooltip">Septiembre: $35,420</div>
+                            </div>
+                            <div class="bar" style="height: 95%;" data-month="Octubre" data-amount="39580">
+                                <div class="bar-label">Oct</div>
+                                <div class="bar-tooltip">Octubre: $39,580</div>
+                            </div>
+                            <div class="bar" style="height: 70%;" data-month="Noviembre" data-amount="29170">
+                                <div class="bar-label">Nov</div>
+                                <div class="bar-tooltip">Noviembre: $29,170</div>
+                            </div>
+                            <div class="bar" style="height: 60%;" data-month="Diciembre" data-amount="25000">
+                                <div class="bar-label">Dic</div>
+                                <div class="bar-tooltip">Diciembre: $25,000</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- <div class="recent-activity fade-in" style="animation-delay: 0.5s;">
+                        <h3 class="chart-title">Actividad Reciente</h3>
+                        <ul class="activity-list">
+                            <li class="activity-item">
+                                <div class="activity-icon">
+                                    <i class="fas fa-file-invoice"></i>
+                                </div>
+                                <div class="activity-content">
+                                    <div class="activity-title">Nueva factura creada</div>
+                                    <div class="activity-desc">Factura #INV-2023-00125 para Cliente Corporativo S.A.
+                                    </div>
+                                    <div class="activity-time">Hace 2 horas</div>
+                                </div>
+                            </li>
+                            <li class="activity-item">
+                                <div class="activity-icon">
+                                    <i class="fas fa-user-plus"></i>
+                                </div>
+                                <div class="activity-content">
+                                    <div class="activity-title">Nuevo cliente registrado</div>
+                                    <div class="activity-desc">Tech Solutions Inc. se ha registrado en el sistema</div>
+                                    <div class="activity-time">Hace 5 horas</div>
+                                </div>
+                            </li>
+                            <li class="activity-item">
+                                <div class="activity-icon">
+                                    <i class="fas fa-check-circle"></i>
+                                </div>
+                                <div class="activity-content">
+                                    <div class="activity-title">Pago recibido</div>
+                                    <div class="activity-desc">Pago completo de Factura #INV-2023-00118 de Global
+                                        Enterprises</div>
+                                    <div class="activity-time">Ayer, 15:42</div>
+                                </div>
+                            </li>
+                            <li class="activity-item">
+                                <div class="activity-icon">
+                                    <i class="fas fa-box"></i>
+                                </div>
+                                <div class="activity-content">
+                                    <div class="activity-title">Nuevo producto agregado</div>
+                                    <div class="activity-desc">"Servicio Premium Plus" añadido al catálogo</div>
+                                    <div class="activity-time">Ayer, 11:20</div>
+                                </div>
+                            </li>
+                        </ul>
+                    </div> -->
+                </div>
+            </main>
+            {% endblock %}
+        </div>
+
+    </div>
+
+    <!-- Botón flotante tipo hamburguesa -->
+    <div class="floating-toggle" id="floatingToggle">
+        <i class="fas fa-bars"></i>
+    </div>
+
+    <div class="sidebar-overlay"></div>
+
+    <!-- Scripts -->
+     
+
+    <script src="/static/js/home.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/notyf@3/notyf.min.js"></script>
+<script>
+
+</script>
+
+    {% block scripts %}
+    {% endblock %}
+</body>
+</html>

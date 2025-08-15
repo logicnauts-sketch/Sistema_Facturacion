@@ -1,0 +1,157 @@
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: #f0f2f5;
+  color: #333;
+  margin: 0;
+  padding: 0;
+}
+
+.container {
+  max-width: 900px;
+  margin: 30px auto;
+  padding: 30px;
+  background-color: #fff;
+  border-radius: 12px;
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.06);
+}
+
+h1 {
+  text-align: center;
+  color: #2c3e50;
+  margin-bottom: 20px;
+}
+
+.version-list {
+  list-style: none;
+  padding: 0;
+  margin-top: 20px;
+}
+
+.version-item {
+  background: #f8f9fa;
+  border: 1px solid #e3e6ea;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  padding: 15px 20px;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.version-item:hover {
+  background: #e6f0ff;
+  border-color: #cce0ff;
+}
+
+.version-item h3 {
+  margin: 0;
+  font-weight: 600;
+  color: #333;
+}
+
+.version-item p {
+  margin: 4px 0;
+  color: #555;
+}
+
+.version-details {
+  display: none;
+  margin-top: 10px;
+  border-top: 1px solid #ccc;
+  padding-top: 10px;
+  font-size: 15px;
+  color: #444;
+}
+
+/* Botones */
+.btn-comprobar,
+.btn-actualizar {
+  display: block;
+  margin: 20px auto;
+  background: #007bff;
+  color: #fff;
+  font-size: 15px;
+  padding: 10px 25px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background 0.3s ease, transform 0.2s ease;
+}
+
+.btn-comprobar:hover,
+.btn-actualizar:hover {
+  background: #0056b3;
+  transform: scale(1.05);
+}
+
+.btn-comprobar:active,
+.btn-actualizar:active {
+  transform: scale(1);
+}
+
+/* Modales */
+.modal {
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(30, 30, 30, 0.5);
+  z-index: 999;
+}
+
+.modal-content {
+  background-color: #fff;
+  padding: 30px 20px;
+  border-radius: 10px;
+  text-align: center;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+  max-width: 400px;
+  width: 100%;
+}
+
+.spinner {
+  margin: 20px auto;
+  width: 50px;
+  height: 50px;
+  border: 4px solid rgba(0, 0, 0, 0.1);
+  border-top-color: #007bff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.hidden {
+  display: none;
+}
+
+.footer {
+  text-align: center;
+  margin-top: 40px;
+  font-size: 14px;
+  color: #555;
+}
+
+.footer a {
+  color: #007bff;
+  text-decoration: none;
+}
+
+.footer a:hover {
+  text-decoration: underline;
+}
+
+#back-btn {
+  display: inline-block;
+  margin-bottom: 20px;
+  text-decoration: none;
+  color: #007bff;
+  font-weight: 500;
+}
+
+#back-btn:hover {
+  text-decoration: underline;
+}

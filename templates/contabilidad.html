@@ -1,0 +1,1734 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Módulo de Gestión Contable</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary: #1e40af;
+            --primary-light: #3b82f6;
+            --secondary: #4b5563;
+            --light: #f9fafb;
+            --border: #e5e7eb;
+        }
+        
+        .sidebar {
+            transition: all 0.3s ease;
+        }
+        
+        .accordion-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+        }
+        
+        .accordion.active .accordion-content {
+            max-height: 1000px;
+        }
+        
+        .floating-btn {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            z-index: 50;
+            transition: all 0.3s ease;
+        }
+        
+        .tooltip {
+            position: relative;
+            cursor: help;
+        }
+        
+        .tooltip:hover::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0,0,0,0.8);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            font-size: 0.875rem;
+            white-space: nowrap;
+            z-index: 100;
+        }
+        
+        .table-responsive {
+            overflow-x: auto;
+        }
+        
+        .status-pending {
+            background-color: #fef3c7;
+            color: #d97706;
+        }
+        
+        .status-paid {
+            background-color: #dcfce7;
+            color: #16a34a;
+        }
+        
+        .status-overdue {
+            background-color: #fee2e2;
+            color: #dc2626;
+        }
+        
+        .income-bg {
+            background-color: #dcfce7;
+            color: #16a34a;
+        }
+        
+        .expense-bg {
+            background-color: #fee2e2;
+            color: #dc2626;
+        }
+        
+        .mobile-menu-btn {
+            display: none;
+        }
+
+        .section-content {
+            display: none;
+        }
+        
+        .section-content.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .bg-assets {
+            background-color: #dbeafe;
+        }
+
+        .bg-liabilities {
+            background-color: #ffe4e6;
+        }
+
+        .bg-equity {
+            background-color: #ecfccb;
+        }
+        
+        .bg-current-assets {
+            background-color: #dbeafe;
+        }
+        
+        .bg-fixed-assets {
+            background-color: #bfdbfe;
+        }
+        
+        .bg-current-liabilities {
+            background-color: #fee2e2;
+        }
+        
+        .bg-long-term-liabilities {
+            background-color: #fecaca;
+        }
+        
+        .journal-entry {
+            border-left: 4px solid #3b82f6;
+            padding-left: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+                position: fixed;
+                height: 100vh;
+                z-index: 40;
+            }
+            
+            .sidebar.active {
+                transform: translateX(0);
+            }
+            
+            .mobile-menu-btn {
+                display: block;
+                position: fixed;
+                top: 1rem;
+                left: 1rem;
+                z-index: 45;
+            }
+            
+            .main-content {
+                margin-left: 0 !important;
+            }
+            
+            .floating-btn {
+                bottom: 1.5rem;
+                right: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Botón de menú móvil -->
+    <button id="mobileMenuBtn" class="mobile-menu-btn bg-white p-2 rounded-md shadow-md text-gray-700 z-50">
+        <i class="fas fa-bars"></i>
+    </button>
+
+    <!-- Sidebar -->
+    <div id="sidebar" class="sidebar w-64 bg-white h-screen fixed shadow-md overflow-y-auto z-40">
+        <div class="p-5 border-b border-gray-200">
+            <h1 class="text-xl font-bold text-gray-800">
+                <i class="fas fa-calculator mr-2 text-blue-600"></i> Contabilidad
+            </h1>
+        </div>
+        
+        <nav class="mt-5">
+            <ul>
+                <li>
+                    <a href="#" data-section="receivables" class="section-link flex items-center p-3 text-gray-700 hover:bg-blue-50 border-l-4 border-blue-600 bg-blue-50">
+                        <i class="fas fa-file-invoice-dollar mr-3 text-blue-600"></i>
+                        <span>Cuentas por Cobrar/Pagar</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#" data-section="income-expenses" class="section-link flex items-center p-3 text-gray-700 hover:bg-blue-50 border-l-4 border-transparent">
+                        <i class="fas fa-exchange-alt mr-3 text-blue-600"></i>
+                        <span>Ingresos y Egresos</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#" data-section="journal" class="section-link flex items-center p-3 text-gray-700 hover:bg-blue-50 border-l-4 border-transparent">
+                        <i class="fas fa-book mr-3 text-blue-600"></i>
+                        <span>Libro Diario</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#" data-section="ledger" class="section-link flex items-center p-3 text-gray-700 hover:bg-blue-50 border-l-4 border-transparent">
+                        <i class="fas fa-book-open mr-3 text-blue-600"></i>
+                        <span>Libro Mayor</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#" data-section="balance" class="section-link flex items-center p-3 text-gray-700 hover:bg-blue-50 border-l-4 border-transparent">
+                        <i class="fas fa-balance-scale mr-3 text-blue-600"></i>
+                        <span>Balance General</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#" data-section="results" class="section-link flex items-center p-3 text-gray-700 hover:bg-blue-50 border-l-4 border-transparent">
+                        <i class="fas fa-chart-line mr-3 text-blue-600"></i>
+                        <span>Estado de Resultados</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#" data-section="taxes" class="section-link flex items-center p-3 text-gray-700 hover:bg-blue-50 border-l-4 border-transparent">
+                        <i class="fas fa-file-contract mr-3 text-blue-600"></i>
+                        <span>Impuestos (RD)</span>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+        
+        <div class="absolute bottom-0 w-full p-4 bg-gray-50 border-t border-gray-200">
+            <div class="flex items-center">
+                <div class="bg-blue-600 text-white w-10 h-10 rounded-full flex items-center justify-center">
+                    <span class="font-bold">U</span>
+                </div>
+                <div class="ml-3">
+                    <p class="text-sm font-medium text-gray-700">Usuario Contable</p>
+                    <p class="text-xs text-gray-500">Administrador Financiero</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Contenido Principal -->
+    <div id="mainContent" class="main-content ml-64 p-5 min-h-screen">
+        <!-- Encabezado dinámico -->
+        <div class="mb-6">
+            <div class="flex flex-col md:flex-row md:items-center justify-between">
+                <div>
+                    <h2 id="sectionTitle" class="text-2xl font-bold text-gray-800">Cuentas por Cobrar / Pagar</h2>
+                    <p id="sectionDescription" class="text-gray-600">Gestión de cuentas pendientes de clientes y proveedores</p>
+                </div>
+                <div class="mt-4 md:mt-0">
+                    <div class="relative">
+                        <input type="text" placeholder="Buscar..." class="w-full md:w-64 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <i class="fas fa-search absolute right-3 top-2.5 text-gray-400"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Sección Cuentas por Cobrar/Pagar -->
+        <div id="receivables" class="section-content active">
+            <!-- Filtros -->
+            <div class="bg-gray-50 rounded-lg p-4 mb-6">
+                <div class="flex flex-wrap gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Estado</label>
+                        <select class="w-full md:w-40 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option>Todos</option>
+                            <option>Pendiente</option>
+                            <option>Pagado</option>
+                            <option>Vencido</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Tipo</label>
+                        <select class="w-full md:w-40 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option>Todos</option>
+                            <option>Por Cobrar</option>
+                            <option>Por Pagar</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Fecha</label>
+                        <div class="flex gap-2">
+                            <input type="date" class="w-32 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <span class="self-center text-gray-500">a</span>
+                            <input type="date" class="w-32 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                    </div>
+                    <div class="self-end">
+                        <button class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+                            <i class="fas fa-filter mr-2"></i>Filtrar
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Tarjetas Resumen -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div class="bg-white p-4 rounded-lg shadow border border-gray-200">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <p class="text-sm text-gray-500">Total por Cobrar</p>
+                            <p class="text-2xl font-bold text-gray-800">RD$ 158,400</p>
+                        </div>
+                        <div class="bg-blue-100 p-3 rounded-full">
+                            <i class="fas fa-hand-holding-usd text-blue-600 text-xl"></i>
+                        </div>
+                    </div>
+                    <div class="mt-2">
+                        <div class="flex justify-between text-sm">
+                            <span>Pendientes</span>
+                            <span class="font-medium">RD$ 98,200</span>
+                        </div>
+                        <div class="flex justify-between text-sm">
+                            <span>Vencidas</span>
+                            <span class="font-medium">RD$ 60,200</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-white p-4 rounded-lg shadow border border-gray-200">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <p class="text-sm text-gray-500">Total por Pagar</p>
+                            <p class="text-2xl font-bold text-gray-800">RD$ 72,300</p>
+                        </div>
+                        <div class="bg-yellow-100 p-3 rounded-full">
+                            <i class="fas fa-file-invoice text-yellow-600 text-xl"></i>
+                        </div>
+                    </div>
+                    <div class="mt-2">
+                        <div class="flex justify-between text-sm">
+                            <span>Pendientes</span>
+                            <span class="font-medium">RD$ 45,800</span>
+                        </div>
+                        <div class="flex justify-between text-sm">
+                            <span>Vencidas</span>
+                            <span class="font-medium">RD$ 26,500</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-white p-4 rounded-lg shadow border border-gray-200">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <p class="text-sm text-gray-500">Próximos Vencimientos</p>
+                            <p class="text-2xl font-bold text-gray-800">RD$ 48,500</p>
+                        </div>
+                        <div class="bg-red-100 p-3 rounded-full">
+                            <i class="fas fa-exclamation-triangle text-red-600 text-xl"></i>
+                        </div>
+                    </div>
+                    <div class="mt-2">
+                        <div class="flex justify-between text-sm">
+                            <span>Esta semana</span>
+                            <span class="font-medium">RD$ 12,300</span>
+                        </div>
+                        <div class="flex justify-between text-sm">
+                            <span>Próximos 15 días</span>
+                            <span class="font-medium">RD$ 36,200</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Tabla -->
+            <div class="bg-white rounded-lg shadow-md overflow-hidden">
+                <div class="table-responsive">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer">
+                                    <div class="flex items-center">
+                                        <span>Cliente/Proveedor</span>
+                                        <i class="fas fa-sort ml-1 text-gray-400"></i>
+                                    </div>
+                                </th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer">
+                                    <div class="flex items-center">
+                                        <span>Monto</span>
+                                        <i class="fas fa-sort ml-1 text-gray-400"></i>
+                                    </div>
+                                </th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer">
+                                    <div class="flex items-center">
+                                        <span>Fecha Emisión</span>
+                                        <i class="fas fa-sort ml-1 text-gray-400"></i>
+                                    </div>
+                                </th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer">
+                                    <div class="flex items-center">
+                                        <span>Fecha Vencimiento</span>
+                                        <i class="fas fa-sort ml-1 text-gray-400"></i>
+                                    </div>
+                                </th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Estado
+                                </th>
+                                <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Acciones
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="flex items-center">
+                                        <div class="bg-blue-600 text-white w-8 h-8 rounded-full flex items-center justify-center">
+                                            <span class="text-xs">CE</span>
+                                        </div>
+                                        <div class="ml-4">
+                                            <div class="text-sm font-medium text-gray-900">Cliente Ejemplo S.A.</div>
+                                            <div class="text-sm text-gray-500">Factura #001-2023</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                    RD$ 25,000.00
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    15/08/2023
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    15/09/2023
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full status-pending">
+                                        Pendiente
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                    <button class="text-blue-600 hover:text-blue-900 mr-3 tooltip" data-tooltip="Ver detalles">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    <button class="text-green-600 hover:text-green-900 mr-3 tooltip" data-tooltip="Registrar pago">
+                                        <i class="fas fa-money-bill-wave"></i>
+                                    </button>
+                                    <button class="text-purple-600 hover:text-purple-900 tooltip" data-tooltip="Enviar recordatorio">
+                                        <i class="fas fa-bell"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="flex items-center">
+                                        <div class="bg-red-600 text-white w-8 h-8 rounded-full flex items-center justify-center">
+                                            <span class="text-xs">PN</span>
+                                        </div>
+                                        <div class="ml-4">
+                                            <div class="text-sm font-medium text-gray-900">Proveedor Nacional</div>
+                                            <div class="text-sm text-gray-500">Factura #PROV-456</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                    RD$ 15,800.00
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    01/08/2023
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    01/09/2023
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full status-paid">
+                                        Pagado
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                    <button class="text-blue-600 hover:text-blue-900 mr-3 tooltip" data-tooltip="Ver detalles">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    <button class="text-green-600 hover:text-green-900 mr-3 tooltip" data-tooltip="Ver historial">
+                                        <i class="fas fa-history"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="flex items-center">
+                                        <div class="bg-green-600 text-white w-8 h-8 rounded-full flex items-center justify-center">
+                                            <span class="text-xs">CI</span>
+                                        </div>
+                                        <div class="ml-4">
+                                            <div class="text-sm font-medium text-gray-900">Cliente Importante</div>
+                                            <div class="text-sm text-gray-500">Factura #002-2023</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                    RD$ 42,300.00
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    20/07/2023
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    20/08/2023
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full status-overdue">
+                                        Vencido
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                    <button class="text-blue-600 hover:text-blue-900 mr-3 tooltip" data-tooltip="Ver detalles">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    <button class="text-red-600 hover:text-red-900 mr-3 tooltip" data-tooltip="Aplicar recargos">
+                                        <i class="fas fa-percentage"></i>
+                                    </button>
+                                    <button class="text-purple-600 hover:text-purple-900 tooltip" data-tooltip="Enviar recordatorio">
+                                        <i class="fas fa-bell"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Paginación -->
+                <div class="flex items-center justify-between border-t border-gray-200 px-4 py-3 sm:px-6">
+                    <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                        <div>
+                            <p class="text-sm text-gray-700">
+                                Mostrando
+                                <span class="font-medium">1</span>
+                                a
+                                <span class="font-medium">3</span>
+                                de
+                                <span class="font-medium">12</span>
+                                resultados
+                            </p>
+                        </div>
+                        <div>
+                            <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                                <a href="#" class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                    <span class="sr-only">Anterior</span>
+                                    <i class="fas fa-chevron-left"></i>
+                                </a>
+                                <a href="#" class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-blue-50 text-sm font-medium text-blue-600">1</a>
+                                <a href="#" class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">2</a>
+                                <a href="#" class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">3</a>
+                                <a href="#" class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                                    <span class="sr-only">Siguiente</span>
+                                    <i class="fas fa-chevron-right"></i>
+                                </a>
+                            </nav>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Sección Ingresos y Egresos -->
+        <div id="income-expenses" class="section-content">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div class="bg-white p-4 rounded-lg shadow border border-gray-200">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <p class="text-sm text-gray-500">Ingresos del Mes</p>
+                            <p class="text-2xl font-bold text-green-600">RD$ 325,400</p>
+                        </div>
+                        <div class="bg-green-100 p-3 rounded-full">
+                            <i class="fas fa-arrow-up text-green-600 text-xl"></i>
+                        </div>
+                    </div>
+                    <div class="mt-2 text-sm text-gray-500">
+                        <span class="text-green-600">+12.5%</span> vs mes anterior
+                    </div>
+                </div>
+                
+                <div class="bg-white p-4 rounded-lg shadow border border-gray-200">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <p class="text-sm text-gray-500">Egresos del Mes</p>
+                            <p class="text-2xl font-bold text-red-600">RD$ 187,200</p>
+                        </div>
+                        <div class="bg-red-100 p-3 rounded-full">
+                            <i class="fas fa-arrow-down text-red-600 text-xl"></i>
+                        </div>
+                    </div>
+                    <div class="mt-2 text-sm text-gray-500">
+                        <span class="text-red-600">+8.3%</span> vs mes anterior
+                    </div>
+                </div>
+                
+                <div class="bg-white p-4 rounded-lg shadow border border-gray-200">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <p class="text-sm text-gray-500">Utilidad Neta</p>
+                            <p class="text-2xl font-bold text-blue-600">RD$ 138,200</p>
+                        </div>
+                        <div class="bg-blue-100 p-3 rounded-full">
+                            <i class="fas fa-chart-line text-blue-600 text-xl"></i>
+                        </div>
+                    </div>
+                    <div class="mt-2 text-sm text-gray-500">
+                        <span class="text-green-600">+15.2%</span> vs mes anterior
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-lg font-medium text-gray-800">Registro de Transacciones</h3>
+                    <div>
+                        <button class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+                            <i class="fas fa-plus mr-2"></i>Nuevo Registro
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fecha</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tipo</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Categoría</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Concepto</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Monto</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Responsable</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">25/08/2023</td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">Ingreso</span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Ventas</td>
+                                <td class="px-6 py-4 text-sm text-gray-900">Pago factura #001-2023</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-green-600 font-medium">RD$ 25,000.00</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Juan Pérez</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                    <button class="text-blue-600 hover:text-blue-900 mr-2">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="text-red-600 hover:text-red-900">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">24/08/2023</td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="px-2 py-1 text-xs rounded-full bg-red-100 text-red-800">Egreso</span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Servicios</td>
+                                <td class="px-6 py-4 text-sm text-gray-900">Pago de electricidad</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-red-600 font-medium">RD$ 12,400.00</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">María Rodríguez</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                    <button class="text-blue-600 hover:text-blue-900 mr-2">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="text-red-600 hover:text-red-900">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">20/08/2023</td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">Ingreso</span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Servicios</td>
+                                <td class="px-6 py-4 text-sm text-gray-900">Pago proyecto ABC</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-green-600 font-medium">RD$ 45,000.00</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Carlos López</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                    <button class="text-blue-600 hover:text-blue-900 mr-2">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="text-red-600 hover:text-red-900">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Sección Libro Diario -->
+        <div id="journal" class="section-content">
+            <!-- Filtros -->
+            <div class="bg-gray-50 rounded-lg p-4 mb-6">
+                <div class="flex flex-wrap gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Fecha</label>
+                        <div class="flex gap-2">
+                            <input type="date" class="w-32 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <span class="self-center text-gray-500">a</span>
+                            <input type="date" class="w-32 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Cuenta</label>
+                        <select class="w-full md:w-48 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option>Todas las cuentas</option>
+                            <option>Caja</option>
+                            <option>Bancos</option>
+                            <option>Cuentas por Cobrar</option>
+                            <option>Inventario</option>
+                            <option>Activos Fijos</option>
+                            <option>Cuentas por Pagar</option>
+                            <option>Préstamos</option>
+                            <option>Capital</option>
+                        </select>
+                    </div>
+                    <div class="self-end">
+                        <button class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+                            <i class="fas fa-filter mr-2"></i>Filtrar
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Asientos Contables -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-lg font-medium text-gray-800">Registro de Asientos Contables</h3>
+                    <div>
+                        <button class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+                            <i class="fas fa-plus mr-2"></i>Nuevo Asiento
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Asiento 1 -->
+                <div class="journal-entry">
+                    <div class="flex justify-between items-center mb-3">
+                        <div>
+                            <span class="font-medium text-gray-700">#AS-001</span>
+                            <span class="ml-3 text-sm text-gray-500">25/08/2023</span>
+                        </div>
+                        <div>
+                            <span class="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">Comprobante #001</span>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-2">
+                        <p class="text-gray-800">Venta de mercancía a crédito - Factura #2023-001</p>
+                    </div>
+                    
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Cuenta</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Descripción</th>
+                                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Débito</th>
+                                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Crédito</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200">
+                                <tr>
+                                    <td class="px-6 py-3 text-sm text-gray-900">Cuentas por Cobrar</td>
+                                    <td class="px-6 py-3 text-sm text-gray-500">Cliente: Empresa ABC</td>
+                                    <td class="px-6 py-3 text-sm text-right font-medium">RD$ 25,000.00</td>
+                                    <td class="px-6 py-3 text-sm text-right"></td>
+                                </tr>
+                                <tr>
+                                    <td class="px-6 py-3 text-sm text-gray-900">Ventas</td>
+                                    <td class="px-6 py-3 text-sm text-gray-500">Venta de productos</td>
+                                    <td class="px-6 py-3 text-sm text-right"></td>
+                                    <td class="px-6 py-3 text-sm text-right font-medium">RD$ 21,186.44</td>
+                                </tr>
+                                <tr>
+                                    <td class="px-6 py-3 text-sm text-gray-900">ITBIS por Cobrar</td>
+                                    <td class="px-6 py-3 text-sm text-gray-500">ITBIS 18%</td>
+                                    <td class="px-6 py-3 text-sm text-right"></td>
+                                    <td class="px-6 py-3 text-sm text-right font-medium">RD$ 3,813.56</td>
+                                </tr>
+                            </tbody>
+                            <tfoot class="bg-gray-50">
+                                <tr>
+                                    <td colspan="2" class="px-6 py-3 text-right text-sm font-medium">Total:</td>
+                                    <td class="px-6 py-3 text-right text-sm font-medium">RD$ 25,000.00</td>
+                                    <td class="px-6 py-3 text-right text-sm font-medium">RD$ 25,000.00</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+                
+                <!-- Asiento 2 -->
+                <div class="journal-entry">
+                    <div class="flex justify-between items-center mb-3">
+                        <div>
+                            <span class="font-medium text-gray-700">#AS-002</span>
+                            <span class="ml-3 text-sm text-gray-500">24/08/2023</span>
+                        </div>
+                        <div>
+                            <span class="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">Comprobante #002</span>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-2">
+                        <p class="text-gray-800">Pago de servicios públicos</p>
+                    </div>
+                    
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Cuenta</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Descripción</th>
+                                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Débito</th>
+                                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Crédito</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200">
+                                <tr>
+                                    <td class="px-6 py-3 text-sm text-gray-900">Gastos de Servicios</td>
+                                    <td class="px-6 py-3 text-sm text-gray-500">Electricidad y agua</td>
+                                    <td class="px-6 py-3 text-sm text-right font-medium">RD$ 12,400.00</td>
+                                    <td class="px-6 py-3 text-sm text-right"></td>
+                                </tr>
+                                <tr>
+                                    <td class="px-6 py-3 text-sm text-gray-900">ITBIS por Pagar</td>
+                                    <td class="px-6 py-3 text-sm text-gray-500">ITBIS 18%</td>
+                                    <td class="px-6 py-3 text-sm text-right font-medium">RD$ 1,892.37</td>
+                                    <td class="px-6 py-3 text-sm text-right"></td>
+                                </tr>
+                                <tr>
+                                    <td class="px-6 py-3 text-sm text-gray-900">Bancos</td>
+                                    <td class="px-6 py-3 text-sm text-gray-500">Banco Popular #1234</td>
+                                    <td class="px-6 py-3 text-sm text-right"></td>
+                                    <td class="px-6 py-3 text-sm text-right font-medium">RD$ 14,292.37</td>
+                                </tr>
+                            </tbody>
+                            <tfoot class="bg-gray-50">
+                                <tr>
+                                    <td colspan="2" class="px-6 py-3 text-right text-sm font-medium">Total:</td>
+                                    <td class="px-6 py-3 text-right text-sm font-medium">RD$ 14,292.37</td>
+                                    <td class="px-6 py-3 text-right text-sm font-medium">RD$ 14,292.37</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+                
+                <!-- Asiento 3 -->
+                <div class="journal-entry">
+                    <div class="flex justify-between items-center mb-3">
+                        <div>
+                            <span class="font-medium text-gray-700">#AS-003</span>
+                            <span class="ml-3 text-sm text-gray-500">20/08/2023</span>
+                        </div>
+                        <div>
+                            <span class="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">Comprobante #003</span>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-2">
+                        <p class="text-gray-800">Compra de equipo de oficina</p>
+                    </div>
+                    
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Cuenta</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Descripción</th>
+                                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Débito</th>
+                                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Crédito</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200">
+                                <tr>
+                                    <td class="px-6 py-3 text-sm text-gray-900">Equipos de Oficina</td>
+                                    <td class="px-6 py-3 text-sm text-gray-500">Computadoras y mobiliario</td>
+                                    <td class="px-6 py-3 text-sm text-right font-medium">RD$ 85,000.00</td>
+                                    <td class="px-6 py-3 text-sm text-right"></td>
+                                </tr>
+                                <tr>
+                                    <td class="px-6 py-3 text-sm text-gray-900">ITBIS por Pagar</td>
+                                    <td class="px-6 py-3 text-sm text-gray-500">ITBIS 18%</td>
+                                    <td class="px-6 py-3 text-sm text-right font-medium">RD$ 12,966.10</td>
+                                    <td class="px-6 py-3 text-sm text-right"></td>
+                                </tr>
+                                <tr>
+                                    <td class="px-6 py-3 text-sm text-gray-900">Cuentas por Pagar</td>
+                                    <td class="px-6 py-3 text-sm text-gray-500">Proveedor: Suministros RD</td>
+                                    <td class="px-6 py-3 text-sm text-right"></td>
+                                    <td class="px-6 py-3 text-sm text-right font-medium">RD$ 97,966.10</td>
+                                </tr>
+                            </tbody>
+                            <tfoot class="bg-gray-50">
+                                <tr>
+                                    <td colspan="2" class="px-6 py-3 text-right text-sm font-medium">Total:</td>
+                                    <td class="px-6 py-3 text-right text-sm font-medium">RD$ 97,966.10</td>
+                                    <td class="px-6 py-3 text-right text-sm font-medium">RD$ 97,966.10</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Sección Libro Mayor -->
+        <div id="ledger" class="section-content">
+            <div class="bg-gray-50 rounded-lg p-4 mb-6">
+                <div class="flex flex-wrap gap-4">
+                    <div class="flex-1 min-w-[200px]">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Seleccionar Cuenta</label>
+                        <select id="accountSelect" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="cash">Caja</option>
+                            <option value="bank">Bancos</option>
+                            <option value="receivables" selected>Cuentas por Cobrar</option>
+                            <option value="inventory">Inventario</option>
+                            <option value="fixed-assets">Activos Fijos</option>
+                            <option value="payables">Cuentas por Pagar</option>
+                            <option value="loans">Préstamos</option>
+                            <option value="capital">Capital</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Fecha</label>
+                        <div class="flex gap-2">
+                            <input type="date" class="w-32 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <span class="self-center text-gray-500">a</span>
+                            <input type="date" class="w-32 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                    </div>
+                    <div class="self-end">
+                        <button class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+                            <i class="fas fa-filter mr-2"></i>Filtrar
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Resumen de Cuenta -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                <div class="bg-white p-4 rounded-lg shadow border border-gray-200">
+                    <div class="text-sm text-gray-500 mb-1">Saldo Anterior</div>
+                    <div class="text-xl font-bold text-gray-800">RD$ 125,400.00</div>
+                </div>
+                
+                <div class="bg-white p-4 rounded-lg shadow border border-gray-200">
+                    <div class="text-sm text-gray-500 mb-1">Total Débitos</div>
+                    <div class="text-xl font-bold text-blue-600">RD$ 87,500.00</div>
+                </div>
+                
+                <div class="bg-white p-4 rounded-lg shadow border border-gray-200">
+                    <div class="text-sm text-gray-500 mb-1">Total Créditos</div>
+                    <div class="text-xl font-bold text-blue-600">RD$ 42,300.00</div>
+                </div>
+                
+                <div class="bg-blue-50 p-4 rounded-lg shadow border border-blue-200">
+                    <div class="text-sm text-gray-700 mb-1 font-medium">Saldo Actual</div>
+                    <div class="text-xl font-bold text-blue-600">RD$ 170,600.00</div>
+                </div>
+            </div>
+            
+            <!-- Movimientos de Cuenta -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h3 class="text-lg font-medium text-gray-800 mb-4">Movimientos de Cuentas por Cobrar</h3>
+                
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fecha</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Asiento</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Descripción</th>
+                                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Débito</th>
+                                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Crédito</th>
+                                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Saldo</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            <tr>
+                                <td class="px-6 py-4 text-sm text-gray-500">01/08/2023</td>
+                                <td class="px-6 py-4 text-sm text-gray-900">#AS-001</td>
+                                <td class="px-6 py-4 text-sm text-gray-900">Saldo inicial</td>
+                                <td class="px-6 py-4 text-sm text-right"></td>
+                                <td class="px-6 py-4 text-sm text-right"></td>
+                                <td class="px-6 py-4 text-sm text-right font-medium">RD$ 125,400.00</td>
+                            </tr>
+                            <tr>
+                                <td class="px-6 py-4 text-sm text-gray-500">05/08/2023</td>
+                                <td class="px-6 py-4 text-sm text-gray-900">#AS-025</td>
+                                <td class="px-6 py-4 text-sm text-gray-900">Venta a Cliente A</td>
+                                <td class="px-6 py-4 text-sm text-right font-medium">RD$ 25,000.00</td>
+                                <td class="px-6 py-4 text-sm text-right"></td>
+                                <td class="px-6 py-4 text-sm text-right font-medium">RD$ 150,400.00</td>
+                            </tr>
+                            <tr>
+                                <td class="px-6 py-4 text-sm text-gray-500">10/08/2023</td>
+                                <td class="px-6 py-4 text-sm text-gray-900">#AS-037</td>
+                                <td class="px-6 py-4 text-sm text-gray-900">Pago Cliente B</td>
+                                <td class="px-6 py-4 text-sm text-right"></td>
+                                <td class="px-6 py-4 text-sm text-right font-medium">RD$ 15,000.00</td>
+                                <td class="px-6 py-4 text-sm text-right font-medium">RD$ 135,400.00</td>
+                            </tr>
+                            <tr>
+                                <td class="px-6 py-4 text-sm text-gray-500">15/08/2023</td>
+                                <td class="px-6 py-4 text-sm text-gray-900">#AS-042</td>
+                                <td class="px-6 py-4 text-sm text-gray-900">Venta a Cliente C</td>
+                                <td class="px-6 py-4 text-sm text-right font-medium">RD$ 42,300.00</td>
+                                <td class="px-6 py-4 text-sm text-right"></td>
+                                <td class="px-6 py-4 text-sm text-right font-medium">RD$ 177,700.00</td>
+                            </tr>
+                            <tr>
+                                <td class="px-6 py-4 text-sm text-gray-500">20/08/2023</td>
+                                <td class="px-6 py-4 text-sm text-gray-900">#AS-056</td>
+                                <td class="px-6 py-4 text-sm text-gray-900">Pago Cliente A</td>
+                                <td class="px-6 py-4 text-sm text-right"></td>
+                                <td class="px-6 py-4 text-sm text-right font-medium">RD$ 7,100.00</td>
+                                <td class="px-6 py-4 text-sm text-right font-medium">RD$ 170,600.00</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Sección Balance General -->
+        <div id="balance" class="section-content">
+            <div class="bg-gray-50 rounded-lg p-4 mb-6">
+                <div class="flex flex-wrap gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Fecha de Corte</label>
+                        <input type="date" class="w-48 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" value="2023-08-31">
+                    </div>
+                    <div class="self-end">
+                        <button class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+                            <i class="fas fa-sync mr-2"></i> Actualizar
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Activos -->
+                <div class="bg-white rounded-lg shadow-md overflow-hidden">
+                    <div class="bg-blue-600 text-white px-6 py-3">
+                        <h3 class="text-lg font-medium">Activos</h3>
+                    </div>
+                    <div class="p-6">
+                        <div class="mb-4">
+                            <h4 class="text-md font-medium text-gray-800 mb-3 bg-current-assets p-2">Activos Corrientes</h4>
+                            <div class="ml-4">
+                                <div class="flex justify-between py-2 border-b border-gray-100">
+                                    <div class="text-sm text-gray-700">Efectivo y equivalentes</div>
+                                    <div class="text-sm font-medium">RD$ 45,800.00</div>
+                                </div>
+                                <div class="flex justify-between py-2 border-b border-gray-100">
+                                    <div class="text-sm text-gray-700">Cuentas por Cobrar</div>
+                                    <div class="text-sm font-medium">RD$ 170,600.00</div>
+                                </div>
+                                <div class="flex justify-between py-2 border-b border-gray-100">
+                                    <div class="text-sm text-gray-700">Inventarios</div>
+                                    <div class="text-sm font-medium">RD$ 98,400.00</div>
+                                </div>
+                                <div class="flex justify-between py-2 border-b border-gray-100">
+                                    <div class="text-sm text-gray-700">Otros activos corrientes</div>
+                                    <div class="text-sm font-medium">RD$ 12,300.00</div>
+                                </div>
+                                <div class="flex justify-between py-2 font-medium bg-gray-50">
+                                    <div class="text-sm">Total Activos Corrientes</div>
+                                    <div class="text-sm">RD$ 327,100.00</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <h4 class="text-md font-medium text-gray-800 mb-3 bg-fixed-assets p-2">Activos No Corrientes</h4>
+                            <div class="ml-4">
+                                <div class="flex justify-between py-2 border-b border-gray-100">
+                                    <div class="text-sm text-gray-700">Propiedades, planta y equipo</div>
+                                    <div class="text-sm font-medium">RD$ 245,700.00</div>
+                                </div>
+                                <div class="flex justify-between py-2 border-b border-gray-100">
+                                    <div class="text-sm text-gray-700">Depreciación acumulada</div>
+                                    <div class="text-sm font-medium">(RD$ 78,400.00)</div>
+                                </div>
+                                <div class="flex justify-between py-2 border-b border-gray-100">
+                                    <div class="text-sm text-gray-700">Activos intangibles</div>
+                                    <div class="text-sm font-medium">RD$ 32,500.00</div>
+                                </div>
+                                <div class="flex justify-between py-2 font-medium bg-gray-50">
+                                    <div class="text-sm">Total Activos No Corrientes</div>
+                                    <div class="text-sm">RD$ 199,800.00</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-blue-50 p-3 rounded-lg">
+                            <div class="flex justify-between font-medium">
+                                <div class="text-sm text-gray-800">TOTAL ACTIVOS</div>
+                                <div class="text-lg text-blue-600">RD$ 526,900.00</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Pasivos y Patrimonio -->
+                <div class="bg-white rounded-lg shadow-md overflow-hidden">
+                    <div class="bg-red-600 text-white px-6 py-3">
+                        <h3 class="text-lg font-medium">Pasivos y Patrimonio</h3>
+                    </div>
+                    <div class="p-6">
+                        <div class="mb-4">
+                            <h4 class="text-md font-medium text-gray-800 mb-3 bg-current-liabilities p-2">Pasivos Corrientes</h4>
+                            <div class="ml-4">
+                                <div class="flex justify-between py-2 border-b border-gray-100">
+                                    <div class="text-sm text-gray-700">Cuentas por Pagar</div>
+                                    <div class="text-sm font-medium">RD$ 97,600.00</div>
+                                </div>
+                                <div class="flex justify-between py-2 border-b border-gray-100">
+                                    <div class="text-sm text-gray-700">Préstamos a corto plazo</div>
+                                    <div class="text-sm font-medium">RD$ 45,000.00</div>
+                                </div>
+                                <div class="flex justify-between py-2 border-b border-gray-100">
+                                    <div class="text-sm text-gray-700">Impuestos por pagar</div>
+                                    <div class="text-sm font-medium">RD$ 38,750.00</div>
+                                </div>
+                                <div class="flex justify-between py-2 border-b border-gray-100">
+                                    <div class="text-sm text-gray-700">Obligaciones laborales</div>
+                                    <div class="text-sm font-medium">RD$ 32,300.00</div>
+                                </div>
+                                <div class="flex justify-between py-2 font-medium bg-gray-50">
+                                    <div class="text-sm">Total Pasivos Corrientes</div>
+                                    <div class="text-sm">RD$ 213,650.00</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <h4 class="text-md font-medium text-gray-800 mb-3 bg-long-term-liabilities p-2">Pasivos No Corrientes</h4>
+                            <div class="ml-4">
+                                <div class="flex justify-between py-2 border-b border-gray-100">
+                                    <div class="text-sm text-gray-700">Préstamos a largo plazo</div>
+                                    <div class="text-sm font-medium">RD$ 120,000.00</div>
+                                </div>
+                                <div class="flex justify-between py-2 font-medium bg-gray-50">
+                                    <div class="text-sm">Total Pasivos No Corrientes</div>
+                                    <div class="text-sm">RD$ 120,000.00</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <h4 class="text-md font-medium text-gray-800 mb-3 bg-equity p-2">Patrimonio Neto</h4>
+                            <div class="ml-4">
+                                <div class="flex justify-between py-2 border-b border-gray-100">
+                                    <div class="text-sm text-gray-700">Capital social</div>
+                                    <div class="text-sm font-medium">RD$ 250,000.00</div>
+                                </div>
+                                <div class="flex justify-between py-2 border-b border-gray-100">
+                                    <div class="text-sm text-gray-700">Utilidades retenidas</div>
+                                    <div class="text-sm font-medium">RD$ 138,200.00</div>
+                                </div>
+                                <div class="flex justify-between py-2 border-b border-gray-100">
+                                    <div class="text-sm text-gray-700">Utilidad del ejercicio</div>
+                                    <div class="text-sm font-medium">RD$ 45,050.00</div>
+                                </div>
+                                <div class="flex justify-between py-2 font-medium bg-gray-50">
+                                    <div class="text-sm">Total Patrimonio Neto</div>
+                                    <div class="text-sm">RD$ 433,250.00</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-red-50 p-3 rounded-lg">
+                            <div class="flex justify-between font-medium">
+                                <div class="text-sm text-gray-800">TOTAL PASIVOS Y PATRIMONIO</div>
+                                <div class="text-lg text-red-600">RD$ 766,900.00</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Resumen Balance -->
+            <div class="mt-6 bg-white rounded-lg shadow-md p-6">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="text-center p-4 rounded-lg bg-blue-50 border border-blue-200">
+                        <div class="text-2xl font-bold text-blue-600">RD$ 526,900.00</div>
+                        <div class="text-sm text-gray-600">Total Activos</div>
+                    </div>
+                    <div class="text-center p-4 rounded-lg bg-red-50 border border-red-200">
+                        <div class="text-2xl font-bold text-red-600">RD$ 333,650.00</div>
+                        <div class="text-sm text-gray-600">Total Pasivos</div>
+                    </div>
+                    <div class="text-center p-4 rounded-lg bg-green-50 border border-green-200">
+                        <div class="text-2xl font-bold text-green-600">RD$ 433,250.00</div>
+                        <div class="text-sm text-gray-600">Total Patrimonio</div>
+                    </div>
+                </div>
+                
+                <div class="mt-6 text-center">
+                    <div class="text-lg font-medium text-gray-800">Ecuación Contable: Activos = Pasivos + Patrimonio</div>
+                    <div class="text-xl font-bold mt-2">RD$ 526,900.00 = RD$ 333,650.00 + RD$ 433,250.00</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Sección Estado de Resultados -->
+        <div id="results" class="section-content">
+            <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                <div class="flex flex-wrap justify-between items-center mb-6">
+                    <h3 class="text-lg font-medium text-gray-800">Estado de Pérdidas y Ganancias</h3>
+                    <div class="flex gap-2 mt-2 sm:mt-0">
+                        <select class="px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option>Agosto 2023</option>
+                            <option>Julio 2023</option>
+                            <option>Junio 2023</option>
+                        </select>
+                        <button class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+                            <i class="fas fa-download mr-2"></i>Exportar
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                        <h4 class="text-md font-medium text-gray-700 mb-3">Ingresos Totales</h4>
+                        <div class="text-2xl font-bold text-green-600 mb-2">RD$ 325,400.00</div>
+                        <div class="text-sm text-gray-500">+12.5% vs mes anterior</div>
+                    </div>
+                    
+                    <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                        <h4 class="text-md font-medium text-gray-700 mb-3">Costos y Gastos</h4>
+                        <div class="text-2xl font-bold text-red-600 mb-2">RD$ 187,200.00</div>
+                        <div class="text-sm text-gray-500">+8.3% vs mes anterior</div>
+                    </div>
+                    
+                    <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                        <h4 class="text-md font-medium text-gray-700 mb-3">Utilidad Neta</h4>
+                        <div class="text-2xl font-bold text-blue-600 mb-2">RD$ 138,200.00</div>
+                        <div class="text-sm text-blue-500">+15.2% vs mes anterior</div>
+                    </div>
+                </div>
+                
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Categoría</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Monto</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">% del Total</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Vs Mes Anterior</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            <tr>
+                                <td class="px-6 py-4 text-sm font-medium text-gray-900">Ventas de Productos</td>
+                                <td class="px-6 py-4 text-sm text-gray-900">RD$ 245,800.00</td>
+                                <td class="px-6 py-4 text-sm text-gray-500">75.5%</td>
+                                <td class="px-6 py-4 text-sm text-green-600 font-medium">+10.2%</td>
+                            </tr>
+                            <tr>
+                                <td class="px-6 py-4 text-sm font-medium text-gray-900">Ingresos por Servicios</td>
+                                <td class="px-6 py-4 text-sm text-gray-900">RD$ 79,600.00</td>
+                                <td class="px-6 py-4 text-sm text-gray-500">24.5%</td>
+                                <td class="px-6 py-4 text-sm text-green-600 font-medium">+18.7%</td>
+                            </tr>
+                            <tr class="bg-gray-50">
+                                <td class="px-6 py-4 text-sm font-medium text-gray-900">Total Ingresos</td>
+                                <td class="px-6 py-4 text-sm font-bold text-gray-900">RD$ 325,400.00</td>
+                                <td class="px-6 py-4 text-sm font-bold text-gray-900">100.0%</td>
+                                <td class="px-6 py-4 text-sm font-bold text-green-600">+12.5%</td>
+                            </tr>
+                            <tr>
+                                <td class="px-6 py-4 text-sm font-medium text-gray-900">Costos de Ventas</td>
+                                <td class="px-6 py-4 text-sm text-gray-900">RD$ 98,700.00</td>
+                                <td class="px-6 py-4 text-sm text-gray-500">30.3%</td>
+                                <td class="px-6 py-4 text-sm text-red-600 font-medium">+5.8%</td>
+                            </tr>
+                            <tr>
+                                <td class="px-6 py-4 text-sm font-medium text-gray-900">Gastos Operativos</td>
+                                <td class="px-6 py-4 text-sm text-gray-900">RD$ 56,200.00</td>
+                                <td class="px-6 py-4 text-sm text-gray-500">17.3%</td>
+                                <td class="px-6 py-4 text-sm text-green-600 font-medium">-2.1%</td>
+                            </tr>
+                            <tr>
+                                <td class="px-6 py-4 text-sm font-medium text-gray-900">Gastos de Personal</td>
+                                <td class="px-6 py-4 text-sm text-gray-900">RD$ 32,300.00</td>
+                                <td class="px-6 py-4 text-sm text-gray-500">9.9%</td>
+                                <td class="px-6 py-4 text-sm text-red-600 font-medium">+15.6%</td>
+                            </tr>
+                            <tr class="bg-gray-50">
+                                <td class="px-6 py-4 text-sm font-medium text-gray-900">Total Gastos</td>
+                                <td class="px-6 py-4 text-sm font-bold text-gray-900">RD$ 187,200.00</td>
+                                <td class="px-6 py-4 text-sm font-bold text-gray-900">57.5%</td>
+                                <td class="px-6 py-4 text-sm font-bold text-red-600">+8.3%</td>
+                            </tr>
+                            <tr class="bg-blue-50">
+                                <td class="px-6 py-4 text-sm font-bold text-gray-900">Utilidad Neta</td>
+                                <td class="px-6 py-4 text-sm font-bold text-blue-600">RD$ 138,200.00</td>
+                                <td class="px-6 py-4 text-sm font-bold text-blue-600">42.5%</td>
+                                <td class="px-6 py-4 text-sm font-bold text-green-600">+15.2%</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h4 class="text-md font-medium text-gray-700 mb-4">Distribución de Ingresos</h4>
+                    <canvas id="incomeChart" height="250"></canvas>
+                </div>
+                
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h4 class="text-md font-medium text-gray-700 mb-4">Distribución de Gastos</h4>
+                    <canvas id="expensesChart" height="250"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Sección Impuestos (RD) -->
+        <div id="taxes" class="section-content">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div class="bg-white p-4 rounded-lg shadow border border-gray-200">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <p class="text-sm text-gray-500">ITBIS por Pagar</p>
+                            <p class="text-2xl font-bold text-blue-600">RD$ 38,750</p>
+                        </div>
+                        <div class="bg-blue-100 p-3 rounded-full">
+                            <i class="fas fa-file-invoice-dollar text-blue-600 text-xl"></i>
+                        </div>
+                    </div>
+                    <div class="mt-2">
+                        <div class="flex justify-between text-sm">
+                            <span>Vencimiento</span>
+                            <span class="font-medium">20/09/2023</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-white p-4 rounded-lg shadow border border-gray-200">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <p class="text-sm text-gray-500">ISR por Pagar</p>
+                            <p class="text-2xl font-bold text-blue-600">RD$ 22,400</p>
+                        </div>
+                        <div class="bg-blue-100 p-3 rounded-full">
+                            <i class="fas fa-file-invoice text-blue-600 text-xl"></i>
+                        </div>
+                    </div>
+                    <div class="mt-2">
+                        <div class="flex justify-between text-sm">
+                            <span>Vencimiento</span>
+                            <span class="font-medium">15/09/2023</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-white p-4 rounded-lg shadow border border-gray-200">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <p class="text-sm text-gray-500">Estado Actual</p>
+                            <p class="text-2xl font-bold text-green-600">Al día</p>
+                        </div>
+                        <div class="bg-green-100 p-3 rounded-full">
+                            <i class="fas fa-check-circle text-green-600 text-xl"></i>
+                        </div>
+                    </div>
+                    <div class="mt-2">
+                        <div class="flex justify-between text-sm">
+                            <span>Próximo vencimiento</span>
+                            <span class="font-medium">15/09/2023</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                <h3 class="text-lg font-medium text-gray-800 mb-4">Reporte de ITBIS</h3>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <div class="border border-gray-200 rounded-lg p-4">
+                        <h4 class="text-md font-medium text-gray-700 mb-3">ITBIS Débito Fiscal</h4>
+                        <div class="text-2xl font-bold text-gray-800 mb-2">RD$ 64,320.00</div>
+                        <div class="text-sm text-gray-500">Impuesto cobrado en ventas</div>
+                    </div>
+                    
+                    <div class="border border-gray-200 rounded-lg p-4">
+                        <h4 class="text-md font-medium text-gray-700 mb-3">ITBIS Crédito Fiscal</h4>
+                        <div class="text-2xl font-bold text-gray-800 mb-2">RD$ 25,570.00</div>
+                        <div class="text-sm text-gray-500">Impuesto pagado en compras</div>
+                    </div>
+                </div>
+                
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                    <div class="flex justify-between items-center">
+                        <h4 class="text-md font-medium text-gray-700">ITBIS por Pagar</h4>
+                        <div class="text-2xl font-bold text-blue-600">RD$ 38,750.00</div>
+                    </div>
+                    <div class="mt-2 text-sm text-gray-600">
+                        Vencimiento: 20 de Septiembre, 2023
+                    </div>
+                </div>
+                
+                <div class="flex flex-wrap gap-3">
+                    <button class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center">
+                        <i class="fas fa-file-pdf mr-2"></i> Exportar PDF
+                    </button>
+                    <button class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition flex items-center">
+                        <i class="fas fa-file-excel mr-2"></i> Exportar Excel
+                    </button>
+                    <button class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition flex items-center">
+                        <i class="fas fa-file-code mr-2"></i> Exportar XML (DGII)
+                    </button>
+                    <button class="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition flex items-center">
+                        <i class="fas fa-money-check mr-2"></i> Pagar Ahora
+                    </button>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h3 class="text-lg font-medium text-gray-800 mb-4">Reporte de ISR</h3>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <div class="border border-gray-200 rounded-lg p-4">
+                        <h4 class="text-md font-medium text-gray-700 mb-2">Ingresos Gravables</h4>
+                        <div class="text-xl font-bold text-gray-800">RD$ 325,400.00</div>
+                    </div>
+                    
+                    <div class="border border-gray-200 rounded-lg p-4">
+                        <h4 class="text-md font-medium text-gray-700 mb-2">Tasa Aplicada</h4>
+                        <div class="text-xl font-bold text-gray-800">27%</div>
+                    </div>
+                    
+                    <div class="border border-gray-200 rounded-lg p-4">
+                        <h4 class="text-md font-medium text-gray-700 mb-2">Retenciones</h4>
+                        <div class="text-xl font-bold text-gray-800">RD$ 5,320.00</div>
+                    </div>
+                </div>
+                
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                    <div class="flex justify-between items-center">
+                        <h4 class="text-md font-medium text-gray-700">ISR por Pagar</h4>
+                        <div class="text-2xl font-bold text-blue-600">RD$ 22,400.00</div>
+                    </div>
+                    <div class="mt-2 text-sm text-gray-600">
+                        Vencimiento: 15 de Septiembre, 2023
+                    </div>
+                </div>
+                
+                <div class="flex flex-wrap gap-3">
+                    <button class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center">
+                        <i class="fas fa-file-pdf mr-2"></i> Exportar PDF
+                    </button>
+                    <button class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition flex items-center">
+                        <i class="fas fa-file-excel mr-2"></i> Exportar Excel
+                    </button>
+                    <button class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition flex items-center">
+                        <i class="fas fa-file-code mr-2"></i> Exportar XML (DGII)
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Botón flotante -->
+    <button id="floatingBtn" class="floating-btn w-14 h-14 bg-blue-600 rounded-full text-white shadow-lg hover:bg-blue-700 focus:outline-none flex items-center justify-center">
+        <i class="fas fa-plus text-xl"></i>
+    </button>
+
+    <script>
+        // Datos para gráficos
+        const incomeData = {
+            labels: ['Ventas de Productos', 'Ingresos por Servicios', 'Otros Ingresos'],
+            datasets: [{
+                data: [75.5, 24.5, 0],
+                backgroundColor: ['#3b82f6', '#10b981', '#8b5cf6'],
+            }]
+        };
+        
+        const expensesData = {
+            labels: ['Costos de Ventas', 'Gastos Operativos', 'Gastos de Personal', 'Otros Gastos'],
+            datasets: [{
+                data: [52.7, 30.0, 17.3, 0],
+                backgroundColor: ['#ef4444', '#f97316', '#eab308', '#8b5cf6'],
+            }]
+        };
+
+        // Inicializar gráficos
+        function initCharts() {
+            // Gráfico de ingresos
+            const incomeCtx = document.getElementById('incomeChart').getContext('2d');
+            new Chart(incomeCtx, {
+                type: 'doughnut',
+                data: incomeData,
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+            
+            // Gráfico de gastos
+            const expensesCtx = document.getElementById('expensesChart').getContext('2d');
+            new Chart(expensesCtx, {
+                type: 'doughnut',
+                data: expensesData,
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Menú móvil
+        document.getElementById('mobileMenuBtn').addEventListener('click', function() {
+            document.getElementById('sidebar').classList.toggle('active');
+        });
+        
+        // Cambiar sección
+        document.querySelectorAll('.section-link').forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                
+                // Remover clase activa de todos los links
+                document.querySelectorAll('.section-link').forEach(el => {
+                    el.classList.remove('border-blue-600', 'bg-blue-50');
+                    el.classList.add('border-transparent');
+                });
+                
+                // Añadir clase activa al link clickeado
+                this.classList.add('border-blue-600', 'bg-blue-50');
+                this.classList.remove('border-transparent');
+                
+                // Obtener la sección a mostrar
+                const sectionId = this.dataset.section;
+                
+                // Ocultar todas las secciones
+                document.querySelectorAll('.section-content').forEach(section => {
+                    section.classList.remove('active');
+                });
+                
+                // Mostrar la sección seleccionada
+                document.getElementById(sectionId).classList.add('active');
+                
+                // Actualizar título y descripción
+                const sectionName = this.querySelector('span').textContent;
+                document.getElementById('sectionTitle').textContent = sectionName;
+                
+                // Actualizar descripción según sección
+                let description = '';
+                switch(sectionId) {
+                    case 'receivables':
+                        description = 'Gestión de cuentas pendientes de clientes y proveedores';
+                        break;
+                    case 'income-expenses':
+                        description = 'Registro de todos los ingresos y gastos de la empresa';
+                        break;
+                    case 'journal':
+                        description = 'Registro cronológico de todas las transacciones contables';
+                        break;
+                    case 'ledger':
+                        description = 'Movimientos y saldos de una cuenta específica';
+                        break;
+                    case 'balance':
+                        description = 'Activos, pasivos y patrimonio neto de la empresa';
+                        break;
+                    case 'results':
+                        description = 'Estado de pérdidas y ganancias de la empresa';
+                        break;
+                    case 'taxes':
+                        description = 'Gestión de impuestos para la República Dominicana';
+                        break;
+                    default:
+                        description = 'Sección de contabilidad';
+                }
+                document.getElementById('sectionDescription').textContent = description;
+                
+                // Inicializar gráficos si es necesario
+                if(sectionId === 'results') {
+                    initCharts();
+                }
+            });
+        });
+        
+        // Botón flotante
+        document.getElementById('floatingBtn').addEventListener('click', function() {
+            // Determinar qué acción realizar según la sección actual
+            const activeSection = document.querySelector('.section-content.active').id;
+            let action = '';
+            
+            switch(activeSection) {
+                case 'receivables':
+                    action = 'Agregar nueva cuenta por cobrar/pagar';
+                    break;
+                case 'income-expenses':
+                    action = 'Registrar nuevo ingreso o egreso';
+                    break;
+                case 'journal':
+                    action = 'Agregar nuevo asiento contable';
+                    break;
+                case 'ledger':
+                    action = 'Añadir movimiento de cuenta';
+                    break;
+                case 'balance':
+                    action = 'Generar nuevo balance';
+                    break;
+                case 'results':
+                    action = 'Generar nuevo reporte';
+                    break;
+                case 'taxes':
+                    action = 'Crear nuevo reporte de impuestos';
+                    break;
+                default:
+                    action = 'Agregar nuevo elemento';
+            }
+            
+            alert(`Acción: ${action}`);
+        });
+        
+        // Inicializar tooltips
+        document.querySelectorAll('.tooltip').forEach(el => {
+            el.addEventListener('mouseover', function() {
+                // En una implementación real, esto mostraría un tooltip personalizado
+                console.log('Mostrar tooltip para: ' + this.dataset.tooltip);
+            });
+        });
+        
+        // Ordenamiento de tablas
+        document.querySelectorAll('th').forEach(th => {
+            if(th.querySelector('.fa-sort')) {
+                th.addEventListener('click', function() {
+                    const table = this.closest('table');
+                    const tbody = table.querySelector('tbody');
+                    const rows = Array.from(tbody.querySelectorAll('tr'));
+                    
+                    const columnIndex = Array.from(this.parentElement.children).indexOf(this);
+                    const isAscending = this.classList.toggle('asc');
+                    
+                    // Remover clases de ordenamiento de todas las columnas
+                    this.parentElement.querySelectorAll('th').forEach(el => {
+                        el.classList.remove('asc', 'desc');
+                    });
+                    
+                    // Añadir clase según la dirección
+                    this.classList.add(isAscending ? 'asc' : 'desc');
+                    
+                    // Ordenar filas
+                    rows.sort((a, b) => {
+                        const aValue = a.children[columnIndex].textContent.trim();
+                        const bValue = b.children[columnIndex].textContent.trim();
+                        
+                        // Intenta convertir a número si es posible
+                        const aNum = parseFloat(aValue.replace(/[^\d.-]/g, ''));
+                        const bNum = parseFloat(bValue.replace(/[^\d.-]/g, ''));
+                        
+                        if (!isNaN(aNum) && !isNaN(bNum)) {
+                            return isAscending ? aNum - bNum : bNum - aNum;
+                        }
+                        
+                        // Orden alfabético
+                        return isAscending 
+                            ? aValue.localeCompare(bValue) 
+                            : bValue.localeCompare(aValue);
+                    });
+                    
+                    // Limpiar y reinsertar filas ordenadas
+                    while (tbody.firstChild) {
+                        tbody.removeChild(tbody.firstChild);
+                    }
+                    
+                    rows.forEach(row => {
+                        tbody.appendChild(row);
+                    });
+                });
+            }
+        });
+        
+        // Cambiar cuenta en libro mayor
+        document.getElementById('accountSelect').addEventListener('change', function() {
+            const account = this.value;
+            let accountName = '';
+            
+            switch(account) {
+                case 'cash':
+                    accountName = 'Caja';
+                    break;
+                case 'bank':
+                    accountName = 'Bancos';
+                    break;
+                case 'receivables':
+                    accountName = 'Cuentas por Cobrar';
+                    break;
+                case 'inventory':
+                    accountName = 'Inventario';
+                    break;
+                case 'fixed-assets':
+                    accountName = 'Activos Fijos';
+                    break;
+                case 'payables':
+                    accountName = 'Cuentas por Pagar';
+                    break;
+                case 'loans':
+                    accountName = 'Préstamos';
+                    break;
+                case 'capital':
+                    accountName = 'Capital';
+                    break;
+            }
+            
+            document.querySelector('#ledger h3').textContent = `Movimientos de ${accountName}`;
+        });
+        
+        // Inicializar gráficos si la sección de resultados está activa al cargar
+        if(document.querySelector('#results').classList.contains('active')) {
+            initCharts();
+        }
+    </script>
+</body>
+</html>

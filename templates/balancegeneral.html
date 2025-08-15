@@ -1,0 +1,207 @@
+{% extends "home.html" %}
+
+{% block title %}Gestión de Clientes{% endblock %}
+
+    {% block styles %}
+    <link rel="stylesheet" href="/static/css/balancegeneral.css">
+    {% endblock %}
+    
+
+
+{% block content %}
+    <div class="container">
+        <div class="header">
+            <div>
+                <h1 class="header-title">Balance General</h1>
+                <p class="header-description">Activos, pasivos y patrimonio neto de la empresa</p>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <div class="controls-content">
+                <div class="control-group">
+                    <label class="control-label">Fecha de Corte</label>
+                    <input type="date" class="control-input" id="cutoffDate" value="2023-08-31">
+                </div>
+                <button class="btn btn-primary" id="updateBtn">
+                    <i class="fas fa-sync btn-icon"></i> Actualizar
+                </button>
+            </div>
+        </div>
+        
+        <div class="grid">
+            <!-- Activos -->
+            <div class="card">
+                <div class="card-header card-header-assets">Activos</div>
+                <div class="card-body">
+                    <div class="mb-6">
+                        <h4 class="section-title section-current-assets">Activos Corrientes</h4>
+                        <div class="ml-4">
+                            <div class="account-row">
+                                <div class="account-name">Efectivo y equivalentes</div>
+                                <div class="account-value">RD$ 45,800.00</div>
+                            </div>
+                            <div class="account-row">
+                                <div class="account-name">Cuentas por Cobrar</div>
+                                <div class="account-value">RD$ 170,600.00</div>
+                            </div>
+                            <div class="account-row">
+                                <div class="account-name">Inventarios</div>
+                                <div class="account-value">RD$ 98,400.00</div>
+                            </div>
+                            <div class="account-row">
+                                <div class="account-name">Otros activos corrientes</div>
+                                <div class="account-value">RD$ 12,300.00</div>
+                            </div>
+                            <div class="account-row account-total">
+                                <div class="account-name">Total Activos Corrientes</div>
+                                <div class="account-value">RD$ 327,100.00</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-6">
+                        <h4 class="section-title section-fixed-assets">Activos No Corrientes</h4>
+                        <div class="ml-4">
+                            <div class="account-row">
+                                <div class="account-name">Propiedades, planta y equipo</div>
+                                <div class="account-value">RD$ 245,700.00</div>
+                            </div>
+                            <div class="account-row">
+                                <div class="account-name">Depreciación acumulada</div>
+                                <div class="account-value negative-value">(RD$ 78,400.00)</div>
+                            </div>
+                            <div class="account-row">
+                                <div class="account-name">Activos intangibles</div>
+                                <div class="account-value">RD$ 32,500.00</div>
+                            </div>
+                            <div class="account-row account-total">
+                                <div class="account-name">Total Activos No Corrientes</div>
+                                <div class="account-value">RD$ 199,800.00</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card-total card-total-assets">
+                        <div class="flex justify-between font-medium">
+                            <div class="card-total-label">TOTAL ACTIVOS</div>
+                            <div class="card-total-value total-assets">RD$ 526,900.00</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Pasivos y Patrimonio -->
+            <div class="card">
+                <div class="card-header card-header-liabilities">Pasivos y Patrimonio</div>
+                <div class="card-body">
+                    <div class="mb-6">
+                        <h4 class="section-title section-current-liabilities">Pasivos Corrientes</h4>
+                        <div class="ml-4">
+                            <div class="account-row">
+                                <div class="account-name">Cuentas por Pagar</div>
+                                <div class="account-value">RD$ 97,600.00</div>
+                            </div>
+                            <div class="account-row">
+                                <div class="account-name">Préstamos a corto plazo</div>
+                                <div class="account-value">RD$ 45,000.00</div>
+                            </div>
+                            <div class="account-row">
+                                <div class="account-name">Impuestos por pagar</div>
+                                <div class="account-value">RD$ 38,750.00</div>
+                            </div>
+                            <div class="account-row">
+                                <div class="account-name">Obligaciones laborales</div>
+                                <div class="account-value">RD$ 32,300.00</div>
+                            </div>
+                            <div class="account-row account-total">
+                                <div class="account-name">Total Pasivos Corrientes</div>
+                                <div class="account-value">RD$ 213,650.00</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-6">
+                        <h4 class="section-title section-long-term-liabilities">Pasivos No Corrientes</h4>
+                        <div class="ml-4">
+                            <div class="account-row">
+                                <div class="account-name">Préstamos a largo plazo</div>
+                                <div class="account-value">RD$ 120,000.00</div>
+                            </div>
+                            <div class="account-row account-total">
+                                <div class="account-name">Total Pasivos No Corrientes</div>
+                                <div class="account-value">RD$ 120,000.00</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-6">
+                        <h4 class="section-title section-equity">Patrimonio Neto</h4>
+                        <div class="ml-4">
+                            <div class="account-row">
+                                <div class="account-name">Capital social</div>
+                                <div class="account-value">RD$ 250,000.00</div>
+                            </div>
+                            <div class="account-row">
+                                <div class="account-name">Utilidades retenidas</div>
+                                <div class="account-value">RD$ 138,200.00</div>
+                            </div>
+                            <div class="account-row">
+                                <div class="account-name">Utilidad del ejercicio</div>
+                                <div class="account-value">RD$ 45,050.00</div>
+                            </div>
+                            <div class="account-row account-total">
+                                <div class="account-name">Total Patrimonio Neto</div>
+                                <div class="account-value">RD$ 433,250.00</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card-total card-total-liabilities">
+                        <div class="flex justify-between font-medium">
+                            <div class="card-total-label">TOTAL PASIVOS Y PATRIMONIO</div>
+                            <div class="card-total-value total-liabilities">RD$ 766,900.00</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="summary">
+            <div class="summary-grid">
+                <div class="summary-card summary-assets">
+                    <div class="summary-value total-assets">RD$ 526,900.00</div>
+                    <div class="summary-label">Total Activos</div>
+                </div>
+                <div class="summary-card summary-liabilities">
+                    <div class="summary-value total-liabilities">RD$ 333,650.00</div>
+                    <div class="summary-label">Total Pasivos</div>
+                </div>
+                <div class="summary-card summary-equity">
+                    <div class="summary-value">RD$ 433,250.00</div>
+                    <div class="summary-label">Total Patrimonio</div>
+                </div>
+            </div>
+            
+            <div class="equation">
+                <div class="equation-title">Ecuación Contable: Activos = Pasivos + Patrimonio</div>
+                <div class="equation-content">
+                    RD$ 526,900.00 = RD$ 333,650.00 + RD$ 433,250.00
+                    <span class="equation-error">✗</span>
+                </div>
+                <div class="equation-content equation-error" style="margin-top: 10px; font-size: 18px;">
+                    ¡Desbalance detectado! RD$ 526,900.00 ≠ RD$ 766,900.00
+                </div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            Balance General al 31 de Agosto 2023 | Sistema Contable
+        </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/balancegeneral.js"></script>
+
+{% endblock %}

@@ -1,0 +1,144 @@
+{% extends "home.html" %}
+
+{% block title %}Estado de Resultados{% endblock %}
+
+    {% block styles %}
+    <link rel="stylesheet" href="/static/css/Eresultados.css">
+    {% endblock %}
+    
+
+
+{% block content %}
+    <div class="container">
+        <div class="header">
+            <div>
+                <h1 class="page-title">Estado de Pérdidas y Ganancias</h1>
+                <p class="page-description">Análisis detallado de ingresos, costos y utilidades de la empresa</p>
+            </div>
+            <div class="controls">
+                <select id="periodSelect">
+                    <option value="current">Agosto 2023</option>
+                    <option value="prev1">Julio 2023</option>
+                    <option value="prev2">Junio 2023</option>
+                </select>
+                <button class="btn-primary" id="exportBtn">
+                    <i class="fas fa-download mr-2"></i>Exportar Reporte
+                </button>
+            </div>
+        </div>
+        
+        <div class="summary-cards">
+            <div class="card">
+                <div class="card-title">Ingresos Totales</div>
+                <div class="card-value income-value">RD$ 325,400.00</div>
+                <div class="card-change positive-change">
+                    <i class="fas fa-arrow-up"></i> 12.5% vs mes anterior
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-title">Costos y Gastos</div>
+                <div class="card-value expense-value">RD$ 187,200.00</div>
+                <div class="card-change negative-change">
+                    <i class="fas fa-arrow-up"></i> 8.3% vs mes anterior
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-title">Utilidad Neta</div>
+                <div class="card-value profit-value">RD$ 138,200.00</div>
+                <div class="card-change positive-change">
+                    <i class="fas fa-arrow-up"></i> 15.2% vs mes anterior
+                </div>
+            </div>
+        </div>
+        
+        <div class="summary-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Categoría</th>
+                        <th>Monto</th>
+                        <th>% del Total</th>
+                        <th>Vs Mes Anterior</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="category-name">Ventas de Productos</td>
+                        <td>RD$ 245,800.00</td>
+                        <td>75.5%</td>
+                        <td class="positive">+10.2%</td>
+                    </tr>
+                    <tr>
+                        <td class="category-name">Ingresos por Servicios</td>
+                        <td>RD$ 79,600.00</td>
+                        <td>24.5%</td>
+                        <td class="positive">+18.7%</td>
+                    </tr>
+                    <tr class="total-row">
+                        <td class="category-name">Total Ingresos</td>
+                        <td>RD$ 325,400.00</td>
+                        <td>100.0%</td>
+                        <td class="positive">+12.5%</td>
+                    </tr>
+                    <tr>
+                        <td class="category-name">Costos de Ventas</td>
+                        <td>RD$ 98,700.00</td>
+                        <td>30.3%</td>
+                        <td class="negative">+5.8%</td>
+                    </tr>
+                    <tr>
+                        <td class="category-name">Gastos Operativos</td>
+                        <td>RD$ 56,200.00</td>
+                        <td>17.3%</td>
+                        <td class="positive">-2.1%</td>
+                    </tr>
+                    <tr>
+                        <td class="category-name">Gastos de Personal</td>
+                        <td>RD$ 32,300.00</td>
+                        <td>9.9%</td>
+                        <td class="negative">+15.6%</td>
+                    </tr>
+                    <tr class="total-row">
+                        <td class="category-name">Total Gastos</td>
+                        <td>RD$ 187,200.00</td>
+                        <td>57.5%</td>
+                        <td class="negative">+8.3%</td>
+                    </tr>
+                    <tr class="profit-row">
+                        <td class="category-name">Utilidad Neta</td>
+                        <td>RD$ 138,200.00</td>
+                        <td>42.5%</td>
+                        <td class="positive">+15.2%</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="charts-container">
+            <div class="chart-card">
+                <div class="chart-title">Distribución de Ingresos</div>
+                <div class="chart-container">
+                    <canvas id="incomeChart"></canvas>
+                </div>
+            </div>
+            
+            <div class="chart-card">
+                <div class="chart-title">Distribución de Gastos</div>
+                <div class="chart-container">
+                    <canvas id="expensesChart"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <footer>
+            Sistema Contable Empresarial &copy; 2023 - Reporte generado el 30 de Julio de 2023
+        </footer>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/Eresultados.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}
