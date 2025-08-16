@@ -15,6 +15,46 @@ bp = Blueprint('facturacion', __name__)
 AGENTE_IMPRESION_URL = "http://localhost:5001/print"
 TOKEN_AGENTE = "november" 
 
+def insertar_ventas_desde_facturas(cursor, producto_id, cantidad, cliente_id, metodo_pago):
+    """
+    Inserta registros en la tabla 'ventas' basados en las facturas pagadas.
+    Usa el precio_venta actual de la tabla productos.
+    """
+    cajero = session.get('nombre_completo')   # Usuario que realiza la venta
+    estado = 'completada'
+
+    try:
+        query = """
+            INSERT INTO ventas (
+                producto_id, 
+                cantidad, 
+                precio_unitario, 
+                fecha,
+                usuario_id,
+                cliente_id, 
+                metodo_pago, 
+                estado
+            )
+            SELECT 
+                p.id,               -- producto_id
+                %s,                 -- cantidad
+                p.precio_venta,     -- precio_unitario desde productos
+                NOW(),              -- fecha actual
+                %s,                 -- usuario_id (cajero)
+                %s,                 -- cliente_id
+                %s,                 -- metodo_pago
+                %s                  -- estado
+            FROM productos p
+            WHERE p.id = %s
+        """
+
+        valores = (cantidad, cajero, cliente_id, metodo_pago, estado, producto_id)
+        cursor.execute(query, valores)
+        return True
+    except Exception as e:
+        print(f"Error insertando ventas: {str(e)}")
+        return False
+
 def obtener_configuracion_empresa():
     """Obtiene la configuración de la empresa desde la base de datos"""
     conn = conectar()
@@ -556,6 +596,15 @@ def crear_factura():
                     SET stock_actual = stock_actual - %s 
                     WHERE id = %s
                 """, (item['cantidad'], producto_id))
+
+                insertar_ventas_desde_facturas(
+                    cursor,
+                    producto_id,
+                    item['cantidad'],
+                    cliente_id,
+                    data['metodo_pago'],
+                )
+                print("Paso por aqui")
             elif tipo_factura == 'compra':
                 # Sumar stock para compras
                 cursor.execute("""
