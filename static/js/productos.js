@@ -382,7 +382,8 @@
             categoryError.style.display = 'none';
             
             try {
-                const response = await fetch('/api/categorias', {
+                // Ruta corregida: /productos/api/categorias
+                const response = await fetch('api/categorias', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -392,7 +393,6 @@
                 
                 if (response.ok) {
                     notyf.success('Categoría agregada correctamente');
-                    // Recargar la página para actualizar
                     location.reload();
                 } else {
                     const error = await response.json();
@@ -566,7 +566,6 @@
             const categoryId = this.dataset.id;
             const categoryName = this.closest('.category-item').querySelector('.category-name').textContent;
             
-            // Confirmar eliminación
             const result = await Swal.fire({
                 title: '¿Eliminar categoría?',
                 html: `¿Estás seguro de eliminar la categoría <b>${categoryName}</b>?<br>
@@ -581,7 +580,8 @@
             
             if (result.isConfirmed) {
                 try {
-                    const response = await fetch(`/api/categorias/${categoryId}`, {
+                    // Ruta corregida: /productos/api/categorias
+                    const response = await fetch(`api/categorias/${categoryId}`, {
                         method: 'DELETE'
                     });
                     
@@ -649,3 +649,4 @@
         }
     });
 })();
+

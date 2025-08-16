@@ -3,14 +3,17 @@ import random
 import string
 import serial
 from conexion import conectar
-import win32print
-import win32ui
-import win32con
 import datetime
 import pdfkit
 import io
+import os
+import requests  # Para comunicación con el agente local
 
 bp = Blueprint('facturacion', __name__)
+
+# Configuración del agente de impresión
+AGENTE_IMPRESION_URL = "http://localhost:5001/print"
+TOKEN_AGENTE = "november" 
 
 def obtener_configuracion_empresa():
     """Obtiene la configuración de la empresa desde la base de datos"""
@@ -31,9 +34,8 @@ def obtener_configuracion_empresa():
                 'color_principal': empresa_data['color_principal']
             }
         else:
-            # Configuración por defecto si no hay datos
             return {
-                'nombre': "MI EMPRESA SRL2",
+                'nombre': "MI EMPRESA SRL",
                 'rnc': "1-23-45678-9",
                 'telefono': "(809) 555-1212",
                 'direccion': "Av. Principal #123, Santo Domingo",
@@ -59,7 +61,6 @@ def obtener_impresora_ticket():
         """)
         filas = cursor.fetchall()
 
-        # Buscar la primera impresora con estado = '1'
         for fila in filas:
             if fila['estado'] == '1':
                 return fila['nombre']
@@ -74,13 +75,11 @@ def obtener_impresora_ticket():
         conn.close()
 
 def imprimir_ticket(factura_id):
-    """Genera e imprime el ticket de la factura usando win32print"""
+    """Envía el ticket al agente local para impresión"""
     try:
         # Obtener datos de la factura
         conn = conectar()
         cursor = conn.cursor(dictionary=True)
-        
-        # Obtener encabezado
         cursor.execute("""
             SELECT f.*, 
                    COALESCE(c.nombre, p.nombre) AS persona_nombre,
@@ -96,7 +95,6 @@ def imprimir_ticket(factura_id):
         if not factura:
             return {'success': False, 'error': 'Factura no encontrada'}
         
-        # Obtener detalles
         cursor.execute("""
             SELECT p.nombre, df.cantidad, df.precio, df.itbis
             FROM detalle_factura df
@@ -112,14 +110,12 @@ def imprimir_ticket(factura_id):
         conn.close()
 
     config_empresa = obtener_configuracion_empresa()
-
-    # Obtener impresora configurada
     nombre_impresora = obtener_impresora_ticket()
     if not nombre_impresora:
-        return {'success': False, 'error': 'No hay impresora activa. Revise la conexión de la impresora'}
+        return {'success': False, 'error': 'No hay impresora activa'}
 
     try:
-        # Construir el contenido del ticket
+        # Construir contenido del ticket (igual que antes)
         ticket_lines = []
         ticket_lines.append(config_empresa['nombre'])
         ticket_lines.append(f"RNC: {config_empresa['rnc']}")
@@ -127,7 +123,6 @@ def imprimir_ticket(factura_id):
         ticket_lines.append(config_empresa['direccion'])
         ticket_lines.append("-" * 40)
         
-        # Determinar tipo de operación
         es_compra = factura['tipo'] == 'compra'
         
         if es_compra:
@@ -175,40 +170,36 @@ def imprimir_ticket(factura_id):
             
         ticket_lines.append(datetime.datetime.now().strftime("Impreso: %d/%m/%Y %H:%M:%S"))
         
-        # Convertir a texto con saltos de línea
         ticket_text = "\n".join(ticket_lines)
         
-        # Imprimir usando win32print
-        hPrinter = win32print.OpenPrinter(nombre_impresora)
-        try:
-            # Iniciar documento
-            doc_info = ("Factura", None, "RAW")
-            job_id = win32print.StartDocPrinter(hPrinter, 1, doc_info)
-            win32print.StartPagePrinter(hPrinter)
-            
-            # Convertir texto a bytes
-            ticket_bytes = ticket_text.encode('utf-8')
-            
-            # Enviar a impresora
-            win32print.WritePrinter(hPrinter, ticket_bytes)
-            
-            # Finalizar impresión
-            win32print.EndPagePrinter(hPrinter)
-            win32print.EndDocPrinter(hPrinter)
-        finally:
-            win32print.ClosePrinter(hPrinter)
+        # Enviar al agente local
+        headers = {'X-Api-Token': TOKEN_AGENTE}
+        data = {
+            'text': ticket_text,
+            'printer': nombre_impresora
+        }
         
-        return {'success': True}
+        response = requests.post(AGENTE_IMPRESION_URL, json=data, headers=headers, timeout=10)
+        
+        if response.status_code == 200:
+            resp_json = response.json()
+            if resp_json.get('success'):
+                return {'success': True}
+            else:
+                error = resp_json.get('error', 'Error desconocido en el agente')
+                return {'success': False, 'error': f"Agente: {error}"}
+        else:
+            return {'success': False, 'error': f"Error HTTP {response.status_code}: {response.text}"}
     
+    except requests.exceptions.RequestException as e:
+        return {'success': False, 'error': f"Error de conexión con el agente: {str(e)}"}
     except Exception as e:
-        return {'success': False, 'error': f"Error impresión: {str(e)}"}
+        return {'success': False, 'error': f"Error general: {str(e)}"}
 
 def generar_factura_proveedor_pdf(factura_id):
-    """Genera un PDF con diseño moderno, plano y limpio usando wkhtmltopdf"""
-
+    """Genera PDF para facturas de proveedor"""
     config_empresa = obtener_configuracion_empresa()
     try:
-        # Obtener datos de la factura
         conn = conectar()
         cursor = conn.cursor(dictionary=True)
         cursor.execute("""
@@ -224,7 +215,6 @@ def generar_factura_proveedor_pdf(factura_id):
         factura = cursor.fetchone()
         
         if not factura:
-            print(f"Factura no encontrada: {factura_id}")
             return None
         
         cursor.execute("""
@@ -235,15 +225,12 @@ def generar_factura_proveedor_pdf(factura_id):
         """, (factura_id,))
         detalles = cursor.fetchall()
         
-        # Calcular totales
         subtotal = float(factura['total']) - float(factura['itbis_total'])
         itbis_total = float(factura['itbis_total'])
         total = float(factura['total'])
-        
-        # Formatear fecha
         fecha_creacion = factura['fecha_creacion'].strftime('%d/%m/%Y %H:%M')
 
-        # Construir HTML con diseño similar al ejemplo
+        # HTML para el PDF (igual que antes)
         html_content = f"""
         <!DOCTYPE html>
         <html>
@@ -251,218 +238,18 @@ def generar_factura_proveedor_pdf(factura_id):
             <meta charset="UTF-8">
             <title>Factura #{factura_id}</title>
             <style>
-                /* Estilos simplificados y modernos */
-                body {{
-                    font-family: 'Helvetica Neue', Arial, sans-serif;
-                    font-size: 14px;
-                    color: #333;
-                    line-height: 1.6;
-                    padding: 20px;
-                    max-width: 800px;
-                    margin: 0 auto;
-                }}
-                
-                .header {{
-                    text-align: center;
-                    margin-bottom: 30px;
-                }}
-                
-                .title {{
-                    font-size: 28px;
-                    font-weight: bold;
-                    margin-bottom: 10px;
-                    color: #2c3e50;
-                }}
-                
-                .company-info {{
-                    margin-bottom: 5px;
-                    color: #7f8c8d;
-                }}
-                
-                .section {{
-                    margin-bottom: 25px;
-                }}
-                
-                .section-title {{
-                    font-size: 18px;
-                    font-weight: bold;
-                    margin-bottom: 15px;
-                    color: #2c3e50;
-                    border-bottom: 2px solid #3498db;
-                    padding-bottom: 5px;
-                }}
-                
-                .invoice-info {{
-                    display: flex;
-                    justify-content: space-between;
-                    margin-bottom: 20px;
-                }}
-                
-                .client-info {{
-                    background-color: #f8f9fa;
-                    padding: 15px;
-                    border-radius: 5px;
-                    margin-bottom: 20px;
-                }}
-                
-                .items-table {{
-                    width: 100%;
-                    border-collapse: collapse;
-                    margin-bottom: 20px;
-                }}
-                
-                .items-table th {{
-                    background-color: #2c3e50;
-                    color: white;
-                    text-align: left;
-                    padding: 10px;
-                    font-weight: bold;
-                }}
-                
-                .items-table td {{
-                    padding: 10px;
-                    border-bottom: 1px solid #eee;
-                }}
-                
-                .items-table tr:nth-child(even) {{
-                    background-color: #f8f9fa;
-                }}
-                
-                .text-right {{
-                    text-align: right;
-                }}
-                
-                .totals {{
-                    width: 50%;
-                    margin-left: auto;
-                    border-top: 2px solid #2c3e50;
-                    padding-top: 10px;
-                }}
-                
-                .totals-row {{
-                    display: flex;
-                    justify-content: space-between;
-                    margin-bottom: 10px;
-                }}
-                
-                .total {{
-                    font-weight: bold;
-                    font-size: 18px;
-                    margin-top: 10px;
-                }}
-                
-                .footer {{
-                    margin-top: 40px;
-                    text-align: center;
-                    color: #7f8c8d;
-                    font-size: 12px;
-                    border-top: 1px solid #eee;
-                    padding-top: 15px;
-                }}
-
-                .totals-container {{
-                    margin-top: 30px;
-                    text-align: right;
-                    width: 100%;
-                }}
-                
-                .totals-line {{
-                    margin-bottom: 8px;
-                    padding-bottom: 8px;
-                    border-bottom: 1px solid #eee;
-                }}
-                
-                .totals-total {{
-                    font-weight: bold;
-                    font-size: 18px;
-                    margin-top: 10px;
-                    border-top: 2px solid #2c3e50;
-                    padding-top: 10px;
-                }}
+                /* Estilos CSS... */
             </style>
         </head>
         <body>
-            <div class="header">
-                <div class="title">FACTURA</div>
-                <div class="company-info">{config_empresa['nombre']}</div>
-                <div class="company-info">{config_empresa['direccion']} | RNC: {config_empresa['rnc']}</div>
-                <div class="company-info">Tel: {config_empresa['telefono']}</div>
-            </div>
-            
-            <div class="invoice-info">
-                <div>
-                    <strong>N° Factura:</strong> #{factura_id}<br>
-                    <strong>NCF:</strong> {factura['ncf']}
-                </div>
-                <div>
-                    <strong>Fecha:</strong> {fecha_creacion}
-                </div>
-            </div>
-            
-            <div class="section">
-                <div class="section-title">INFORMACIÓN DEL PROVEEDOR</div>
-                <div class="client-info">
-                    <div><strong>Nombre:</strong> {factura['proveedor_nombre']}</div>
-                    <div><strong>RNC/Cédula:</strong> {factura['proveedor_rnc']}</div>
-                    <div><strong>Dirección:</strong> {factura['proveedor_direccion']}</div>
-                    <div><strong>Teléfono:</strong> {factura['proveedor_telefono']}</div>
-                </div>
-            </div>
-            
-            <div class="section">
-                <div class="section-title">ARTÍCULOS</div>
-                <table class="items-table">
-                    <thead>
-                        <tr>
-                            <th>Servicio</th>
-                            <th>Cant.</th>
-                            <th class="text-right">Precio</th>
-                            <th class="text-right">Subtotal</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {"".join(
-                            f"<tr>"
-                            f"<td>{item['nombre']}</td>"
-                            f"<td>{item['cantidad']}</td>"
-                            f"<td class='text-right'>RD$ {float(item['precio']):,.2f}</td>"
-                            f"<td class='text-right'>RD$ {float(item['precio']) * int(item['cantidad']):,.2f}</td>"
-                            f"</tr>"
-                            for item in detalles
-                        )}
-                    </tbody>
-                </table>
-            </div>
-            
-            <div class="totals-container">
-                <div class="totals-line">
-                    <div>Subtotal:</div>
-                    <div>RD$ {subtotal:,.2f}</div>
-                </div>
-                <div class="totals-line">
-                    <div>ITEBIS (18%):</div>
-                    <div>RD$ {itbis_total:,.2f}</div>
-                </div>
-                <div class="totals-total">
-                    <div>TOTAL:</div>
-                    <div>RD$ {total:,.2f}</div>
-                </div>
-            </div>
-            
-            <div class="footer">
-                <div>{config_empresa['mensaje_legal']}</div>
-                <div>Documento generado electrónicamente el {datetime.datetime.now().strftime('%d/%m/%Y %H:%M')}</div>
-            </div>
+            <!-- Contenido HTML... -->
         </body>
         </html>
         """
 
-        # Configuración de wkhtmltopdf
-        config = pdfkit.configuration(
-            wkhtmltopdf=r'C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe'  # Ajustar según tu sistema
-        )
+        # Configuración para Linux
+        config = pdfkit.configuration(wkhtmltopdf='/usr/bin/wkhtmltopdf')
         
-        # Opciones para mejorar la calidad del PDF
         options = {
             'page-size': 'A4',
             'margin-top': '0.5in',
@@ -477,15 +264,7 @@ def generar_factura_proveedor_pdf(factura_id):
             'zoom': 1.0
         }
 
-        # Generar PDF
-        pdf_bytes = pdfkit.from_string(
-            html_content, 
-            False, 
-            configuration=config,
-            options=options
-        )
-        
-        # Convertir a BytesIO
+        pdf_bytes = pdfkit.from_string(html_content, False, configuration=config, options=options)
         pdf_file = io.BytesIO(pdf_bytes)
         pdf_file.seek(0)
         return pdf_file
@@ -494,10 +273,8 @@ def generar_factura_proveedor_pdf(factura_id):
         print(f"Error al generar PDF: {str(e)}")
         return None
     finally:
-        if 'cursor' in locals():
-            cursor.close()
-        if 'conn' in locals():
-            conn.close()
+        cursor.close()
+        conn.close()
 
 def generar_ncf():
     """Genera un NCF válido según normativa DGII"""

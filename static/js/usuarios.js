@@ -1,4 +1,46 @@
 document.addEventListener('DOMContentLoaded', function() {
+    // Inicializar Notyf para notificaciones
+    const notyf = new Notyf({
+        duration: 5000,
+        position: {
+            x: 'right',
+            y: 'top',
+        },
+        types: [
+            {
+                type: 'success',
+                background: '#28a745',
+                icon: {
+                    className: 'fas fa-check-circle',
+                    tagName: 'i',
+                    color: '#fff'
+                },
+                dismissible: true
+            },
+            {
+                type: 'error',
+                background: '#dc3545',
+                icon: {
+                    className: 'fas fa-exclamation-circle',
+                    tagName: 'i',
+                    color: '#fff'
+                },
+                dismissible: true
+            },
+            {
+                type: 'info',
+                background: '#17a2b8',
+                icon: {
+                    className: 'fas fa-info-circle',
+                    tagName: 'i',
+                    color: '#fff'
+                },
+                dismissible: true
+            }
+        ]
+    });
+
+    // Elementos del DOM
     const modal = document.getElementById('userModal');
     const newUserBtn = document.getElementById('newUserBtn');
     const closeBtn = document.querySelector('.close-btn');
@@ -39,22 +81,28 @@ document.addEventListener('DOMContentLoaded', function() {
         const userId = document.getElementById('userId').value;
         const isEdit = userId !== '';
 
-        const name = document.getElementById('name').value;
-        const username = document.getElementById('username').value;
-        const email = document.getElementById('email').value;
+        const name = document.getElementById('name').value.trim();
+        const username = document.getElementById('username').value.trim();
+        const email = document.getElementById('email').value.trim();
         const role = document.getElementById('role').value;
         const status = document.getElementById('status').value;
         const password = document.getElementById('password').value;
         const confirmPassword = document.getElementById('confirmPassword').value;
 
+        // Validar campos obligatorios
+        if (!name || !username || !email) {
+            notyf.error('Por favor complete todos los campos obligatorios');
+            return;
+        }
+
         // Validar contraseñas solo para nuevo usuario
         if (!isEdit) {
             if (password !== confirmPassword) {
-                alert('Las contraseñas no coinciden');
+                notyf.error('Las contraseñas no coinciden');
                 return;
             }
             if (password.length < 6) {
-                alert('La contraseña debe tener al menos 6 caracteres');
+                notyf.error('La contraseña debe tener al menos 6 caracteres');
                 return;
             }
         }
@@ -86,7 +134,9 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .then(response => {
             if (!response.ok) {
-                return response.json().then(err => { throw err; });
+                return response.json().then(err => { 
+                    throw new Error(err.error || 'Error en la solicitud'); 
+                });
             }
             return response.json();
         })
@@ -94,14 +144,13 @@ document.addEventListener('DOMContentLoaded', function() {
             if (data.success) {
                 closeModal();
                 loadUsers();
-                showToast(isEdit ? 'Usuario actualizado correctamente' : 'Usuario creado correctamente', 'success');
+                notyf.success(isEdit ? 'Usuario actualizado correctamente' : 'Usuario creado correctamente');
             } else {
-                showToast(data.error || 'Error al guardar el usuario', 'error');
+                throw new Error(data.error || 'Error al guardar el usuario');
             }
         })
         .catch(error => {
-            console.error('Error:', error);
-            showToast(error.error || 'Error en la conexión', 'error');
+            notyf.error(error.message || 'Error en la conexión');
         });
     });
 
@@ -124,7 +173,11 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .then(users => {
             usersTable.innerHTML = '';
-            users.forEach(user => {
+            
+            // Filtrar usuarios: excluir el primer usuario (ID 1)
+            const filteredUsers = users.filter(user => user.id !== 1);
+            
+            filteredUsers.forEach(user => {
                 const tr = document.createElement('tr');
                 
                 // Mapear roles a nombres más legibles
@@ -168,8 +221,7 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         })
         .catch(error => {
-            console.error('Error:', error);
-            showToast('Error al cargar usuarios', 'error');
+            notyf.error('Error al cargar usuarios: ' + error.message);
         });
     }
 
@@ -184,7 +236,7 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .then(user => {
             if (user.error) {
-                showToast(user.error, 'error');
+                notyf.error(user.error);
                 return;
             }
             
@@ -207,61 +259,55 @@ document.addEventListener('DOMContentLoaded', function() {
             modal.style.display = 'flex';
         })
         .catch(error => {
-            console.error('Error:', error);
-            showToast('Error al cargar el usuario', 'error');
+            notyf.error('Error al cargar el usuario: ' + error.message);
         });
     }
 
-    // Eliminar usuario
+    // Eliminar usuario con SweetAlert
     function deleteUser(userId) {
-        if (confirm('¿Está seguro que desea eliminar este usuario?')) {
-            fetch(`/usuarios/${userId}`, {
-                method: 'DELETE'
-            })
-            .then(response => {
-                if (!response.ok) {
-                    return response.json().then(err => { throw err; });
-                }
-                return response.json();
-            })
-            .then(data => {
-                if (data.success) {
-                    loadUsers();
-                    showToast('Usuario eliminado correctamente', 'success');
-                } else {
-                    showToast(data.error || 'Error al eliminar el usuario', 'error');
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                showToast(error.error || 'Error en la conexión', 'error');
-            });
+        // Prevenir eliminación del usuario con ID 1
+        if (userId == 1) {
+            notyf.error('No se puede eliminar este usuario');
+            return;
         }
-    }
-
-    // Mostrar notificaciones
-    function showToast(message, type) {
-        // Eliminar toast existente si hay alguno
-        const existingToast = document.querySelector('.toast');
-        if (existingToast) existingToast.remove();
         
-        const toast = document.createElement('div');
-        toast.className = `toast ${type}`;
-        toast.textContent = message;
-        document.body.appendChild(toast);
-        
-        // Mostrar toast
-        setTimeout(() => {
-            toast.style.opacity = '1';
-            toast.style.transform = 'translateY(0)';
-        }, 10);
-        
-        // Ocultar después de 3 segundos
-        setTimeout(() => {
-            toast.style.opacity = '0';
-            toast.style.transform = 'translateY(20px)';
-            setTimeout(() => toast.remove(), 300);
-        }, 3000);
+        // Mostrar confirmación con SweetAlert
+        Swal.fire({
+            title: '¿Estás seguro?',
+            text: "¡No podrás revertir esta acción!",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Sí, eliminar',
+            cancelButtonText: 'Cancelar',
+            backdrop: 'rgba(0,0,0,0.5)'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                fetch(`/usuarios/${userId}`, {
+                    method: 'DELETE'
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        return response.json().then(err => { 
+                            throw new Error(err.error || 'Error en la solicitud'); 
+                        });
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success) {
+                        loadUsers();
+                        notyf.success('Usuario eliminado correctamente');
+                    } else {
+                        throw new Error(data.error || 'Error al eliminar el usuario');
+                    }
+                })
+                .catch(error => {
+                    notyf.error(error.message || 'Error en la conexión');
+                });
+            }
+        });
     }
 
     // Evento para el botón de actualizar

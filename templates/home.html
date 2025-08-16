@@ -189,7 +189,7 @@
             </div>
             {% endif %}
 
-            {% if session.rol == '1' %}
+            {% if session.rol == 'admin' %}
             <a href="{{ url_for('versiones.versiones') }}" class="menu-item" data-module="configuracion">
                 <i class="fas fa-code-branch"></i>
                 <span>Versiones</span>

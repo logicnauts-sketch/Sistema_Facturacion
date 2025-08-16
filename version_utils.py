@@ -5,7 +5,7 @@ import os
 
 
 # URL de la API de GitHub para obtener los releases
-GITHUB_RELEASES_URL = "https://api.github.com/repos/wederick1/Herencia/releases"
+GITHUB_RELEASES_URL = "https://api.github.com/repos/logicnauts-sketch/Sistema_Facturacion/releases"
 
 def obtener_releases():
     try:
