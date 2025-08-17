@@ -1,270 +1,303 @@
-
 document.addEventListener('DOMContentLoaded', function() {
     // Elementos DOM
-    const searchButton = document.getElementById('searchButton');
-    const saveButton = document.getElementById('saveButton');
+    const addPrinterBtn = document.getElementById('addPrinterBtn');
+    const printersContainer = document.getElementById('printersContainer');
+    const printerModal = document.getElementById('printerModal');
+    const detailsModal = document.getElementById('detailsModal');
     const closeModal = document.getElementById('closeModal');
-    const resultsModal = document.getElementById('resultsModal');
-    const modalBody = document.getElementById('modalBody');
-    const currentPrinterSection = document.getElementById('currentPrinterSection');
-    const noPrinterSection = document.getElementById('noPrinterSection');
-    const currentPrinterDetails = document.getElementById('currentPrinterDetails');
+    const closeDetailsModal = document.getElementById('closeDetailsModal');
+    const cancelBtn = document.getElementById('cancelBtn');
+    const printerForm = document.getElementById('printerForm');
+    const detailsContent = document.getElementById('detailsContent');
     const confirmationMessage = document.getElementById('confirmationMessage');
+    const modalTitle = document.getElementById('modalTitle');
     
-    // Impresora seleccionada
-    let selectedPrinter = null;
+    // Variables globales
+    let currentPrinterId = null;
+
+    // Event Listeners
+    addPrinterBtn.addEventListener('click', () => openModal('add'));
+    closeModal.addEventListener('click', closePrinterModal);
+    closeDetailsModal.addEventListener('click', closeDetails);
+    cancelBtn.addEventListener('click', closePrinterModal);
+    printerForm.addEventListener('submit', savePrinter);
     
-    // Función para abrir el modal
-    function openModal() {
-        resultsModal.style.display = 'block';
+    // Cargar impresoras al iniciar
+    loadPrinters();
+    
+    // Función para abrir modal en modo agregar o editar
+    function openModal(mode, printer = null) {
+        if (mode === 'add') {
+            modalTitle.innerHTML = '<i class="fas fa-plus"></i> Agregar Impresora';
+            printerForm.reset();
+            currentPrinterId = null;
+        } else if (mode === 'edit' && printer) {
+            modalTitle.innerHTML = '<i class="fas fa-edit"></i> Editar Impresora';
+            currentPrinterId = printer.id;
+            fillForm(printer);
+        }
+        
+        printerModal.style.display = 'block';
         document.body.style.overflow = 'hidden';
     }
     
-    // Función para cerrar el modal
-    function closeResultsModal() {
-        resultsModal.style.display = 'none';
+    // Llenar formulario con datos de impresora
+    function fillForm(printer) {
+        document.getElementById('printerId').value = printer.id;
+        document.getElementById('vendor').value = printer.vendor_id || '';
+        document.getElementById('product').value = printer.product_id || '';
+        document.getElementById('name').value = printer.nombre || '';
+        document.getElementById('type').value = printer.tipo || 'USB';
+        document.getElementById('model').value = printer.modelo || '';
+        document.getElementById('ip').value = printer.ip || '';
+        document.getElementById('location').value = printer.ubicacion || '';
+    }
+    
+    // Cerrar modal de impresora
+    function closePrinterModal() {
+        printerModal.style.display = 'none';
         document.body.style.overflow = 'auto';
     }
     
-    // Event listeners
-    searchButton.addEventListener('click', buscarImpresoras);
-    closeModal.addEventListener('click', closeResultsModal);
-    saveButton.addEventListener('click', guardarImpresora);
-    
-    // Cerrar modal al hacer clic fuera del contenido
-    window.addEventListener('click', function(event) {
-        if (event.target === resultsModal) {
-            closeResultsModal();
-        }
-    });
-    
-    // Función principal para buscar impresoras
-    function buscarImpresoras() {
-        openModal();
-        
-        // Mostrar animación de carga
-        modalBody.innerHTML = `
-            <div class="loader">
-                <div class="spinner"></div>
-                <p>Buscando impresoras conectadas...</p>
-            </div>
-        `;
-        
-        // Realizar petición al endpoint Flask
-        fetch("/impresoras/scan")
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error("Error en la respuesta del servidor: " + response.status);
-                }
-                return response.json();
-            })
-            .then(impresoras => {
-                mostrarResultados(impresoras);
-            })
-            .catch(error => {
-                console.error("Error:", error);
-                modalBody.innerHTML = `
-                    <div class="no-printers">
-                        <i class="fas fa-exclamation-triangle"></i>
-                        <h3>Error en la búsqueda</h3>
-                        <p>Ocurrió un error al intentar buscar impresoras: ${error.message}</p>
-                        <div class="action-buttons" style="margin-top:20px;">
-                            <button class="btn btn-primary" onclick="buscarImpresoras()">
-                                <i class="fas fa-redo"></i> Reintentar
-                            </button>
-                            <button class="btn btn-secondary" onclick="closeResultsModal()">
-                                <i class="fas fa-times"></i> Cerrar
-                            </button>
-                        </div>
-                    </div>
-                `;
-            });
+    // Cerrar modal de detalles
+    function closeDetails() {
+        detailsModal.style.display = 'none';
+        document.body.style.overflow = 'auto';
     }
     
-    // Función para mostrar los resultados en el modal
-    function mostrarResultados(impresoras) {
-        if (impresoras.length === 0) {
-            modalBody.innerHTML = `
+    // Guardar impresora (nueva o existente)
+    function savePrinter(e) {
+        e.preventDefault();
+        
+        const printerData = {
+            vendor_id: document.getElementById('vendor').value,
+            product_id: document.getElementById('product').value,
+            nombre: document.getElementById('name').value,
+            tipo: document.getElementById('type').value,
+            modelo: document.getElementById('model').value,
+            ip: document.getElementById('ip').value,
+            ubicacion: document.getElementById('location').value,
+            estado: 'Conectado'
+        };
+        
+        // Solo incluye el ID si estamos editando
+        if (currentPrinterId) {
+            printerData.id = currentPrinterId;
+        }
+        
+        const url = currentPrinterId 
+            ? `/impresoras/api/${currentPrinterId}`
+            : '/impresoras/api';
+            
+        const method = currentPrinterId ? 'PUT' : 'POST';
+        
+        fetch(url, {
+            method: method,
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(printerData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showConfirmation();
+                closePrinterModal();
+                loadPrinters();
+            } else {
+                alert('Error al guardar la impresora: ' + (data.message || ''));
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Ocurrió un error al guardar la impresora');
+        });
+    }
+    
+    // Cargar todas las impresoras
+    function loadPrinters() {
+        fetch('/impresoras/api')
+        .then(response => response.json())
+        .then(printers => {
+            renderPrinters(printers);
+        })
+        .catch(error => {
+            console.error('Error cargando impresoras:', error);
+            printersContainer.innerHTML = `
+                <div class="error-message">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <p>Error al cargar las impresoras</p>
+                </div>
+            `;
+        });
+    }
+    
+    // Renderizar impresoras en cards
+    function renderPrinters(printers) {
+        if (printers.length === 0) {
+            printersContainer.innerHTML = `
                 <div class="no-printers">
                     <i class="fas fa-print"></i>
-                    <h3>No se encontraron impresoras</h3>
-                    <p>No se detectaron impresoras 2conect conectadas a este dispositivo.</p>
-                    <div class="action-buttons" style="margin-top:20px;">
-                        <button class="btn btn-primary" onclick="buscarImpresoras()">
-                            <i class="fas fa-redo"></i> Intentar de nuevo
-                        </button>
-                        <button class="btn btn-secondary" onclick="closeResultsModal()">
-                            <i class="fas fa-times"></i> Cerrar
-                        </button>
-                    </div>
+                    <h3>No hay impresoras registradas</h3>
+                    <p>Agregue una impresora para comenzar</p>
                 </div>
             `;
             return;
         }
         
-        let html = `
-            <div class="results-header">
-                <p style="margin-bottom:15px;">Se encontraron <strong>${impresoras.length}</strong> impresoras 2conect:</p>
-            </div>
-            <div class="printer-list">
-        `;
+        printersContainer.innerHTML = '';
         
-        impresoras.forEach(printer => {
-            const statusClass = printer.estado.toLowerCase().includes('conectado') ? "connected" : "disconnected";
-            const statusIcon = printer.estado.toLowerCase().includes('conectado') ? "fa-check-circle" : "fa-times-circle";
-            const estadoTexto = printer.estado.toLowerCase().includes('conectado') ? "Conectado" : "Desconectado";
-            
-            // Asegurar que los campos existan
-            const nombre = printer.nombre || "Nombre no disponible";
-            const tipo = printer.tipo || "Tipo desconocido";
-            const modelo = printer.modelo || "N/A";
-            const ip = printer.ip || "N/A";
-            const ubicacion = printer.ubicacion || "N/A";
-            
-            html += `
-                <div class="printer-item">
-                    <div class="printer-header">
-                        <div class="printer-icon">
-                            <i class="fas fa-print"></i>
-                        </div>
-                        <div class="printer-name">${nombre}</div>
+        printers.forEach(printer => {
+            const card = document.createElement('div');
+            card.className = 'printer-card';
+            card.innerHTML = `
+                <div class="printer-header">
+                    <div class="printer-name">${printer.nombre}</div>
+                    <div class="printer-type">${printer.tipo}</div>
+                </div>
+                
+                <div class="printer-details">
+                    <div class="detail-row">
+                        <div class="detail-label">Modelo:</div>
+                        <div class="detail-value">${printer.modelo || 'N/A'}</div>
                     </div>
-                    
-                    <div class="printer-details-modal">
-                        <div class="detail-modal">
-                            <div class="detail-label-modal">Tipo</div>
-                            <div class="detail-value-modal">${tipo}</div>
-                        </div>
-                        <div class="detail-modal">
-                            <div class="detail-label-modal">Modelo</div>
-                            <div class="detail-value-modal">${modelo}</div>
-                        </div>
-                        <div class="detail-modal">
-                            <div class="detail-label-modal">IP</div>
-                            <div class="detail-value-modal">${ip}</div>
-                        </div>
-                        <div class="detail-modal">
-                            <div class="detail-label-modal">Ubicación</div>
-                            <div class="detail-value-modal">${ubicacion}</div>
+                    <div class="detail-row">
+                        <div class="detail-label">Ubicación:</div>
+                        <div class="detail-value">${printer.ubicacion}</div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">Estado:</div>
+                        <div class="detail-value">
+                            <span class="status ${printer.estado.toLowerCase().includes('conectado') ? 'connected' : 'disconnected'}">
+                                ${printer.estado}
+                            </span>
                         </div>
                     </div>
-                    
-                    <div class="status ${statusClass}">
-                        <i class="fas ${statusIcon}"></i> ${estadoTexto}
+                </div>
+                
+                <div class="card-actions">
+                    <button class="action-btn btn-view" data-id="${printer.id}">
+                        <i class="fas fa-eye"></i> Ver
+                    </button>
+                    <button class="action-btn btn-edit" data-id="${printer.id}">
+                        <i class="fas fa-edit"></i> Editar
+                    </button>
+                    <button class="action-btn btn-delete" data-id="${printer.id}">
+                        <i class="fas fa-trash"></i> Eliminar
+                    </button>
+                </div>
+            `;
+            printersContainer.appendChild(card);
+        });
+        
+        // Agregar event listeners a los botones
+        document.querySelectorAll('.btn-view').forEach(btn => {
+            btn.addEventListener('click', () => viewPrinter(btn.dataset.id));
+        });
+        
+        document.querySelectorAll('.btn-edit').forEach(btn => {
+            btn.addEventListener('click', () => editPrinter(btn.dataset.id));
+        });
+        
+        document.querySelectorAll('.btn-delete').forEach(btn => {
+            btn.addEventListener('click', () => deletePrinter(btn.dataset.id));
+        });
+    }
+    
+    // Ver detalles de impresora
+    function viewPrinter(id) {
+        fetch(`/impresoras/api/${id}`)
+        .then(response => response.json())
+        .then(printer => {
+            detailsContent.innerHTML = `
+                <div class="details-grid">
+                    <div class="detail-item">
+                        <div class="detail-title">Nombre</div>
+                        <div>${printer.nombre}</div>
                     </div>
-                    
-                    <div class="printer-actions">
-                        <button class="select-btn" data-printer='${JSON.stringify(printer)}'>
-                            <i class="fas fa-check"></i> Seleccionar
-                        </button>
+                    <div class="detail-item">
+                        <div class="detail-title">Tipo</div>
+                        <div>${printer.tipo}</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-title">Modelo</div>
+                        <div>${printer.modelo || 'N/A'}</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-title">Vendor ID</div>
+                        <div>${printer.vendor_id || 'N/A'}</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-title">Product ID</div>
+                        <div>${printer.product_id || 'N/A'}</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-title">IP</div>
+                        <div>${printer.ip || 'N/A'}</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-title">Ubicación</div>
+                        <div>${printer.ubicacion}</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-title">Estado</div>
+                        <div class="status ${printer.estado.toLowerCase().includes('conectado') ? 'connected' : 'disconnected'}">
+                            ${printer.estado}
+                        </div>
                     </div>
                 </div>
             `;
-        });
-        
-        html += `
-            </div>
-            <div class="action-buttons" style="margin-top:20px; justify-content:center;">
-                <button class="btn btn-secondary" onclick="closeResultsModal()" style="margin-top:10px;">
-                    <i class="fas fa-times"></i> Cerrar
-                </button>
-            </div>
-        `;
-        
-        modalBody.innerHTML = html;
-        
-        // Agregar event listeners a los botones de selección
-        document.querySelectorAll('.select-btn').forEach(button => {
-            button.addEventListener('click', function() {
-                const printerData = JSON.parse(this.getAttribute('data-printer'));
-                seleccionarImpresora(printerData);
-                closeResultsModal();
-            });
+            detailsModal.style.display = 'block';
+            document.body.style.overflow = 'hidden';
         });
     }
     
-    // Función para seleccionar una impresora
-    function seleccionarImpresora(printer) {
-        selectedPrinter = printer;
-        
-        // Actualizar la vista
-        currentPrinterDetails.innerHTML = `
-            <div class="printer-details">
-                <div class="detail">
-                    <div class="detail-label">Nombre</div>
-                    <div class="detail-value">${printer.nombre}</div>
-                </div>
-                <div class="detail">
-                    <div class="detail-label">Tipo</div>
-                    <div class="detail-value">${printer.tipo}</div>
-                </div>
-                <div class="detail">
-                    <div class="detail-label">Modelo</div>
-                    <div class="detail-value">${printer.modelo}</div>
-                </div>
-                <div class="detail">
-                    <div class="detail-label">Estado</div>
-                    <div class="detail-value">
-                        <span class="status ${printer.estado.toLowerCase().includes('conectado') ? 'connected' : 'disconnected'}">
-                            <i class="fas ${printer.estado.toLowerCase().includes('conectado') ? 'fa-check-circle' : 'fa-times-circle'}"></i> 
-                            ${printer.estado}
-                        </span>
-                    </div>
-                </div>
-            </div>
-        `;
-        
-        // Mostrar sección de impresora seleccionada
-        currentPrinterSection.style.display = 'block';
-        noPrinterSection.style.display = 'none';
-        
-        // Habilitar botón de guardar
-        saveButton.disabled = false;
+    // Editar impresora
+    function editPrinter(id) {
+        fetch(`/impresoras/api/${id}`)
+        .then(response => response.json())
+        .then(printer => {
+            openModal('edit', printer);
+        });
     }
     
-    // Función para guardar la impresora seleccionada
-    function guardarImpresora() {
-        if (!selectedPrinter) return;
+    // Eliminar impresora
+    function deletePrinter(id) {
+        if (!confirm('¿Está seguro de eliminar esta impresora?')) return;
         
-        // Simular envío al servidor
-        fetch("/impresoras/guardar", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify(selectedPrinter)
+        fetch(`/impresoras/api/${id}`, {
+            method: 'DELETE'
         })
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                // Mostrar mensaje de confirmación
-                confirmationMessage.style.display = 'block';
-                
-                // Ocultar mensaje después de 3 segundos
-                setTimeout(() => {
-                    confirmationMessage.style.display = 'none';
-                }, 3000);
+                showConfirmation();
+                loadPrinters();
+            } else {
+                alert('Error al eliminar la impresora');
             }
         })
         .catch(error => {
-            console.error("Error al guardar:", error);
-            alert("Ocurrió un error al guardar la impresora seleccionada");
+            console.error('Error:', error);
+            alert('Ocurrió un error al eliminar la impresora');
         });
     }
     
-    // Inicializar vista
-    function initView() {
-        // Por defecto, no hay impresora seleccionada
-        currentPrinterSection.style.display = 'none';
-        noPrinterSection.style.display = 'block';
-        confirmationMessage.style.display = 'none';
-        saveButton.disabled = true;
+    // Mostrar mensaje de confirmación
+    function showConfirmation() {
+        confirmationMessage.style.display = 'block';
+        setTimeout(() => {
+            confirmationMessage.style.display = 'none';
+        }, 3000);
     }
     
-    // Hacer las funciones accesibles globalmente
-    window.buscarImpresoras = buscarImpresoras;
-    window.closeResultsModal = closeResultsModal;
-    
-    // Inicializar
-    initView();
+    // Cerrar modales al hacer clic fuera
+    window.addEventListener('click', function(event) {
+        if (event.target === printerModal) {
+            closePrinterModal();
+        }
+        if (event.target === detailsModal) {
+            closeDetails();
+        }
+    });
 });

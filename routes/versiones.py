@@ -2,6 +2,7 @@ from flask import Blueprint, render_template, jsonify, send_file
 from version_utils import obtener_releases,  descargar_y_extraer_zip, leer_detalles_version
 import os, shutil, requests
 from datetime import datetime
+from utils import login_required, solo_admin_required
 
 
 # Definir UPLOAD_FOLDER dentro de este archivo
@@ -16,6 +17,8 @@ bp = Blueprint('versiones', __name__)
 
 
 @bp.route('/versiones')
+@login_required
+@solo_admin_required
 def versiones():
     try:
         # Leer los detalles de la versión actual desde el archivo

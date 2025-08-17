@@ -1,163 +1,303 @@
 // Estado de la aplicación
 const appState = {
-  selectedDevice: null,
-  devices: [],
-  defaultPort: null
+    printers: [],
+    editingPrinterId: null
 };
 
 // Elementos del DOM
 const elements = {
-  searchBtn: document.getElementById('searchBtn'),
-  testBtn: document.getElementById('testBtn'),
-  clearBtn: document.getElementById('clearBtn'),
-  deviceInfo: document.getElementById('deviceInfo'),
-  searchResults: document.getElementById('searchResults'),
-  resultsContainer: document.getElementById('resultsContainer'),
-  loading: document.getElementById('loading'),
-  noDevicesMessage: document.getElementById('noDevicesMessage'),
-  testResult: document.getElementById('testResult'),
-  statusIndicator: document.getElementById('statusIndicator'),
-  statusText: document.getElementById('statusText'),
-  deviceName: document.getElementById('deviceName'),
-  devicePort: document.getElementById('devicePort'),
-  deviceManufacturer: document.getElementById('deviceManufacturer'),
-  deviceStatus: document.getElementById('deviceStatus'),
+    addPrinterBtn: document.getElementById('addPrinterBtn'),
+    printersContainer: document.getElementById('printersContainer'),
+    printerModal: document.getElementById('printerModal'),
+    modalTitle: document.getElementById('modalTitle'),
+    printerForm: document.getElementById('printerForm'),
+    printerId: document.getElementById('printerId'),
+    nombreInput: document.getElementById('nombre'),
+    vendorInput: document.getElementById('vendor'),
+    productInput: document.getElementById('product'),
+    portInput: document.getElementById('port'),
+    baudrateInput: document.getElementById('baudrate'),
+    closeModal: document.querySelector('.close'),
+    cancelBtn: document.getElementById('cancelBtn')
 };
 
-// 1) Buscar dispositivos vía API Flask
-async function searchDevices() {
-  elements.searchResults.classList.remove('hidden');
-  elements.loading.classList.remove('hidden');
-  elements.resultsContainer.innerHTML = '';
-  elements.noDevicesMessage.classList.add('hidden');
+// Funciones para cargar impresoras
+async function loadPrinters() {
+    try {
+        const resp = await fetch('/verifone/impresoras');
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        appState.printers = await resp.json();
+        renderPrinters();
+    } catch (err) {
+        
+    }
+}
 
-  try {
-    const resp = await fetch('/verifone/detectar');
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    const dispositivos = await resp.json();
-
-    appState.devices = dispositivos;
-
-    // Si hay un default guardado, auto-selecciónalo y sal del flujo
-    if (appState.defaultPort) {
-      const def = dispositivos.find(d => d.port === appState.defaultPort);
-      if (def) {
-        selectDevice(def);
+// Renderizar impresoras en tarjetas con Flexbox
+function renderPrinters() {
+    elements.printersContainer.innerHTML = '';
+    
+    if (appState.printers.length === 0) {
+        elements.printersContainer.innerHTML = `
+            <div class="empty-state">
+                <i class="fas fa-print fa-3x"></i>
+                <h3>No hay impresoras configuradas</h3>
+                <p>Agrega tu primera impresora para comenzar</p>
+            </div>
+        `;
+        
+        document.getElementById('addFirstPrinter').addEventListener('click', openAddModal);
         return;
-      }
     }
-
-    renderDevices(dispositivos);
-    if (dispositivos.length === 0) {
-      elements.noDevicesMessage.classList.remove('hidden');
-    }
-  } catch (err) {
-    console.error(err);
-    elements.noDevicesMessage.textContent = 'Error al buscar dispositivos.';
-    elements.noDevicesMessage.classList.remove('hidden');
-  } finally {
-    elements.loading.classList.add('hidden');
-  }
-}
-
-// 2) Renderizar lista de dispositivos
-function renderDevices(devices) {
-  elements.resultsContainer.innerHTML = '';
-  devices.forEach(dev => {
-    const div = document.createElement('div');
-    div.className = 'device-item';
-    div.innerHTML = `
-      <div class="device-icon"><i class="fas fa-credit-card"></i></div>
-      <div class="device-title">${dev.description || dev.port}</div>
-      <div class="device-props">
-        <div><span class="prop-name">Puerto:</span> <span class="prop-value">${dev.port}</span></div>
-      </div>`;
-    div.addEventListener('click', () => selectDevice(dev));
-    elements.resultsContainer.appendChild(div);
-  });
-}
-
-// 3) Seleccionar dispositivo
-function selectDevice(device) {
-  appState.selectedDevice = device;
-  // Guardar como default
-  localStorage.setItem('defaultVerifone', JSON.stringify(device));
-  appState.defaultPort = device.port;
-
-  elements.deviceInfo.classList.remove('hidden');
-  elements.testBtn.disabled = false;
-  elements.clearBtn.disabled = false;
-  elements.statusIndicator.classList.add('connected');
-  elements.statusText.textContent = `Seleccionado: ${device.port}`;
-  elements.deviceName.textContent = device.description || '–';
-  elements.devicePort.textContent = device.port;
-  elements.deviceManufacturer.textContent = device.manufacturer || 'Desconocido';
-  elements.deviceStatus.textContent = 'Desconectado';
-  elements.searchResults.classList.add('hidden');
-}
-
-// 4) Probar conexión vía API Flask
-async function testDevice() {
-  if (!appState.selectedDevice) return;
-  elements.testResult.className = 'notification info';
-  elements.testResult.classList.remove('hidden');
-  elements.testResult.innerHTML = `<i class="fas fa-sync fa-spin"></i> Probando...`;
-
-  try {
-    const resp = await fetch('/verifone/probar', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ port: appState.selectedDevice.port })
+    
+    appState.printers.forEach(printer => {
+        const card = document.createElement('div');
+        card.className = 'printer-card';
+        card.innerHTML = `
+            <div class="printer-header">
+                <h3 class="printer-name">
+                    <i class="fas fa-print"></i> ${printer.nombre}
+                </h3>
+                <div class="printer-actions">
+                    <button class="edit" data-id="${printer.id}" title="Editar">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="delete" data-id="${printer.id}" title="Eliminar">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="printer-detail">
+                <span class="printer-label">
+                    <i class="fas fa-id-card"></i> Vendor ID:
+                </span>
+                <span class="printer-value">${printer.vendor}</span>
+            </div>
+            <div class="printer-detail">
+                <span class="printer-label">
+                    <i class="fas fa-barcode"></i> Product ID:
+                </span>
+                <span class="printer-value">${printer.product}</span>
+            </div>
+            <div class="printer-detail">
+                <span class="printer-label">
+                    <i class="fas fa-plug"></i> Puerto:
+                </span>
+                <span class="printer-value">${printer.port || 'N/A'}</span>
+            </div>
+            <div class="printer-detail">
+                <span class="printer-label">
+                    <i class="fas fa-tachometer-alt"></i> Baud Rate:
+                </span>
+                <span class="printer-value">${printer.baudrate || 9600}</span>
+            </div>
+            <div class="printer-detail">
+                <span class="printer-label">
+                    <i class="fas fa-circle"></i> Estado:
+                </span>
+                <span class="printer-value">
+                    <span class="status-indicator status-disconnected"></span>
+                    <span class="printer-status" data-id="${printer.id}">Sin verificar</span>
+                </span>
+            </div>
+            <div class="test-connection">
+                <button class="btn btn-sm btn-primary test-btn" data-id="${printer.id}">
+                    <i class="fas fa-plug"></i> Probar Conexión
+                </button>
+                <div class="test-result hidden" data-id="${printer.id}"></div>
+            </div>
+        `;
+        elements.printersContainer.appendChild(card);
     });
-    const result = await resp.json();
-
-    if (result.success) {
-      elements.testResult.className = 'notification success';
-      elements.testResult.innerHTML = `<i class="fas fa-check-circle"></i> ¡Conexión exitosa!`;
-      elements.deviceStatus.textContent = 'Conectado';
-    } else {
-      throw new Error(result.error || 'Desconocido');
-    }
-  } catch (err) {
-    elements.testResult.className = 'notification error';
-    elements.testResult.innerHTML = `
-      <i class="fas fa-exclamation-triangle"></i>
-      <div><strong>Error:</strong> ${err.message}</div>
-    `;
-    elements.deviceStatus.textContent = 'Error de conexión';
-  }
+    
+    // Añadir event listeners
+    document.querySelectorAll('.printer-actions .edit').forEach(btn => {
+        btn.addEventListener('click', (e) => openEditModal(e.target.closest('button').dataset.id));
+    });
+    
+    document.querySelectorAll('.printer-actions .delete').forEach(btn => {
+        btn.addEventListener('click', (e) => deletePrinter(e.target.closest('button').dataset.id));
+    });
+    
+    document.querySelectorAll('.test-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => testConnection(e.target.closest('button').dataset.id));
+    });
 }
 
-// 5) Limpiar selección
-function clearSelection() {
-  appState.selectedDevice = null;
-  appState.defaultPort = null;
-  localStorage.removeItem('defaultVerifone');
+// Abrir modal para editar
+function openEditModal(printerId) {
+    const printer = appState.printers.find(p => p.id == printerId);
+    if (!printer) return;
+    
+    appState.editingPrinterId = printerId;
+    elements.modalTitle.textContent = 'Editar Impresora';
+    elements.printerId.value = printerId;
+    elements.nombreInput.value = printer.nombre;
+    elements.vendorInput.value = printer.vendor;
+    elements.productInput.value = printer.product;
+    elements.portInput.value = printer.port || '';
+    elements.baudrateInput.value = printer.baudrate || 9600;
+    elements.printerModal.classList.remove('hidden');
+}
 
-  elements.deviceInfo.classList.add('hidden');
-  elements.clearBtn.disabled = true;
-  elements.testBtn.disabled = true;
-  elements.testResult.classList.add('hidden');
-  elements.statusIndicator.classList.remove('connected');
-  elements.statusText.textContent = 'No se ha seleccionado ningún dispositivo';
+// Abrir modal para agregar
+function openAddModal() {
+    appState.editingPrinterId = null;
+    elements.modalTitle.textContent = 'Agregar Nueva Impresora';
+    elements.printerForm.reset();
+    elements.printerModal.classList.remove('hidden');
+}
+
+// Cerrar modal
+function closeModal() {
+    elements.printerModal.classList.add('hidden');
+}
+
+// Enviar formulario (agregar o actualizar)
+async function handleFormSubmit(e) {
+    e.preventDefault();
+    
+    const printerData = {
+        nombre: elements.nombreInput.value,
+        vendor: elements.vendorInput.value,
+        product: elements.productInput.value,
+        port: elements.portInput.value,
+        baudrate: elements.baudrateInput.value
+    };
+    
+    const url = appState.editingPrinterId 
+        ? `/verifone/impresoras/${appState.editingPrinterId}`
+        : '/verifone/impresoras';
+    
+    const method = appState.editingPrinterId ? 'PUT' : 'POST';
+    
+    try {
+        const resp = await fetch(url, {
+            method: method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(printerData)
+        });
+        
+        if (!resp.ok) {
+            const errorData = await resp.json();
+            throw new Error(errorData.error || 'Error desconocido');
+        }
+        
+        closeModal();
+        await loadPrinters();
+        showNotification(
+            `Impresora ${appState.editingPrinterId ? 'actualizada' : 'agregada'} con éxito`,
+            'success'
+        );
+    } catch (err) {
+        showNotification(`Error: ${err.message}`, 'error');
+    }
+}
+
+// Eliminar impresora
+async function deletePrinter(printerId) {
+    if (!confirm('¿Estás seguro de eliminar esta impresora?')) return;
+    
+    try {
+        const resp = await fetch(`/verifone/impresoras/${printerId}`, {
+            method: 'DELETE'
+        });
+        
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        
+        await loadPrinters();
+        showNotification('Impresora eliminada con éxito', 'success');
+    } catch (err) {
+        showNotification('Error al eliminar impresora', 'error');
+    }
+}
+
+// Probar conexión
+async function testConnection(printerId) {
+    const printer = appState.printers.find(p => p.id == printerId);
+    if (!printer) return;
+    
+    const testBtn = document.querySelector(`.test-btn[data-id="${printerId}"]`);
+    const testResult = document.querySelector(`.test-result[data-id="${printerId}"]`);
+    const statusElement = document.querySelector(`.printer-status[data-id="${printerId}"]`);
+    const statusIndicator = document.querySelector(`.status-indicator[data-id="${printerId}"]`);
+    
+    // Actualizar UI
+    testBtn.disabled = true;
+    testBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Probando...';
+    testResult.classList.add('hidden');
+    
+    try {
+        const resp = await fetch('/verifone/probar', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                port: printer.port,
+                baudrate: printer.baudrate || 9600
+            })
+        });
+        
+        const result = await resp.json();
+        
+        if (result.success) {
+            testResult.textContent = '¡Conexión exitosa!';
+            testResult.className = 'test-result test-success';
+            statusElement.textContent = 'Conectado';
+            if (statusIndicator) {
+                statusIndicator.className = 'status-indicator status-connected';
+            }
+        } else {
+            throw new Error(result.error || 'Error desconocido');
+        }
+    } catch (err) {
+        testResult.textContent = `Error: ${err.message}`;
+        testResult.className = 'test-result test-error';
+        statusElement.textContent = 'Error de conexión';
+        if (statusIndicator) {
+            statusIndicator.className = 'status-indicator status-error';
+        }
+    } finally {
+        testResult.classList.remove('hidden');
+        testBtn.disabled = false;
+        testBtn.innerHTML = '<i class="fas fa-plug"></i> Probar Conexión';
+    }
+}
+
+// Mostrar notificación
+function showNotification(message, type) {
+    const notification = document.createElement('div');
+    notification.className = `notification ${type}`;
+    notification.innerHTML = `
+        <i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i>
+        <span>${message}</span>
+    `;
+    
+    document.body.appendChild(notification);
+    notification.classList.add('show');
+    
+    setTimeout(() => {
+        notification.classList.remove('show');
+        setTimeout(() => {
+            document.body.removeChild(notification);
+        }, 300);
+    }, 3000);
 }
 
 // Inicialización
 document.addEventListener('DOMContentLoaded', () => {
-  elements.searchBtn.addEventListener('click', searchDevices);
-  elements.testBtn.addEventListener('click', testDevice);
-  elements.clearBtn.addEventListener('click', clearSelection);
-
-  // Estado inicial de botones
-  elements.testBtn.disabled = true;
-  elements.clearBtn.disabled = true;
-
-  // Recuperar default y lanzar búsqueda automática
-  const saved = localStorage.getItem('defaultVerifone');
-  if (saved) {
-    try {
-      appState.defaultPort = JSON.parse(saved).port;
-      searchDevices();
-    } catch {}
-  }
+    // Cargar impresoras al inicio
+    loadPrinters();
+    
+    // Event listeners
+    elements.addPrinterBtn.addEventListener('click', openAddModal);
+    elements.closeModal.addEventListener('click', closeModal);
+    elements.cancelBtn.addEventListener('click', closeModal);
+    elements.printerForm.addEventListener('submit', handleFormSubmit);
+    
+    // Cerrar modal al hacer clic fuera del contenido
+    window.addEventListener('click', (e) => {
+        if (e.target === elements.printerModal) {
+            closeModal();
+        }
+    });
 });

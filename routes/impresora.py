@@ -1,198 +1,146 @@
-# impresoras.py
-from flask import Blueprint, render_template, jsonify, request
-import platform
-import subprocess
-import json
-import usb.core
-import usb.util
-from conexion import conectar  # tu módulo de conexión a MariaDB
-import re
+from flask import Blueprint, jsonify, request, render_template
+from conexion import conectar
+from utils import login_required, solo_admin_required
 
 bp = Blueprint('impresoras', __name__, url_prefix='/impresoras')
 
-RE_VID_PID = re.compile(r'VID_?([0-9A-Fa-f]{4}).*PID_?([0-9A-Fa-f]{4})', re.IGNORECASE)
-
-# —— Rutas principales ——
-
 @bp.route('/')
+@login_required
+@solo_admin_required
 def impresora():
     """Renderiza la página principal de gestión de impresoras."""
     return render_template('impresoras.html')
 
+# API: Listar todas las impresoras
+@bp.route('/api', methods=['GET'])
+def listar_impresoras():
+    conn = conectar()
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM printers")
+    impresoras = cur.fetchall()
+    cur.close()
+    conn.close()
+    
+    # Convertir a lista de diccionarios
+    result = []
+    for imp in impresoras:
+        result.append({
+            "id": imp[0],
+            "nombre": imp[1],
+            "tipo": imp[2],
+            "modelo": imp[3],
+            "ip": imp[4],
+            "ubicacion": imp[5],
+            "estado": imp[6],
+            "vendor_id": imp[7],
+            "product_id": imp[8]
+        })
+    
+    return jsonify(result)
 
-@bp.route('/scan', methods=['GET'])
-def buscar_impresoras():
-    """Escanea el sistema operativo en busca de impresoras y devuelve un JSON."""
-    sistema = platform.system()
-    impresoras = []
+# Obtener una impresora por ID
+@bp.route('/api/<int:id>', methods=['GET'])
+def obtener_impresora(id):
+    conn = conectar()
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM printers WHERE id = %s", (id,))
+    impresora = cur.fetchone()
+    cur.close()
+    conn.close()
+    
+    if not impresora:
+        return jsonify({"error": "Impresora no encontrada"}), 404
+    
+    return jsonify({
+        "id": impresora[0],
+        "nombre": impresora[1],
+        "tipo": impresora[2],
+        "modelo": impresora[3],
+        "ip": impresora[4],
+        "ubicacion": impresora[5],
+        "estado": impresora[6],
+        "vendor_id": impresora[7],
+        "product_id": impresora[8]
+    })
 
-    if sistema == 'Windows':
-        impresoras = obtener_impresoras_windows()
-    elif sistema == 'Linux':
-        impresoras = obtener_impresoras_linux()
-    elif sistema == 'Darwin':  # macOS
-        impresoras = obtener_impresoras_macos()
-
-    return jsonify(impresoras)
-
-
-@bp.route('/guardar', methods=['POST'])
-def guardar_impresora():
+# Crear una nueva impresora
+@bp.route('/api', methods=['POST'])
+def crear_impresora():
     data = request.get_json()
     conn = conectar()
     cur = conn.cursor()
-
-    # Borrar cualquier registro previo
-    cur.execute("DELETE FROM printers")
-
-    # Insertar la nueva impresora
-    cur.execute(
-        """
-        INSERT INTO printers (nombre, tipo, modelo, ip, ubicacion, estado, vendor_id, product_id)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-        """,
-        (
-            data.get('nombre', ''),
-            data.get('tipo', ''),
-            data.get('modelo', ''),
-            data.get('ip', ''),
-            data.get('ubicacion', ''),
-            data.get('estado', ''),
-            data.get('vendor_id', None),
-            data.get('product_id', None)
+    
+    try:
+        cur.execute(
+            "INSERT INTO printers (nombre, tipo, modelo, ip, ubicacion, estado, vendor_id, product_id) "
+            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
+            (
+                data.get('nombre'),
+                data.get('tipo'),
+                data.get('modelo'),
+                data.get('ip'),
+                data.get('ubicacion'),
+                data.get('estado', 'Conectado'),
+                data.get('vendor_id'),
+                data.get('product_id')
+            )
         )
-    )
-    conn.commit()
-    cur.close()
-    conn.close()
+        conn.commit()
+        return jsonify({"success": True, "id": cur.lastrowid}), 201
+    except Exception as e:
+        conn.rollback()
+        return jsonify({"success": False, "message": str(e)}), 400
+    finally:
+        cur.close()
+        conn.close()
 
-    return jsonify({"success": True, "message": "Impresora guardada correctamente"})
-
-
-@bp.route('/guardada', methods=['GET'])
-def obtener_impresora_guardada():
+# Actualizar una impresora existente
+@bp.route('/api/<int:id>', methods=['PUT'])
+def actualizar_impresora(id):
+    data = request.get_json()
     conn = conectar()
     cur = conn.cursor()
-    cur.execute("SELECT id, nombre, tipo, modelo, ip, ubicacion, estado, vendor_id, product_id FROM printers LIMIT 1")
-    row = cur.fetchone()
-    cur.close()
-    conn.close()
-
-    if not row:
-        return jsonify(None), 204
-
-    impresora = {
-        "id":        row[0],
-        "nombre":    row[1],
-        "tipo":      row[2],
-        "modelo":    row[3],
-        "ip":        row[4],
-        "ubicacion": row[5],
-        "estado":    row[6],
-        "vendor_id": row[7],
-        "product_id": row[8],
-    }
-    return jsonify(impresora)
-
-# —— Helpers de detección por plataforma —— #
-
-def obtener_impresoras_windows():
-    impresoras = []
+    
     try:
-        cmd = [
-            'powershell', '-NoProfile', '-Command',
-            "Get-WmiObject Win32_PnPEntity | Where-Object { $_.PNPDeviceID -match '^USB' } | "
-            "Select-Object Name, PNPDeviceID | ConvertTo-Json"
-        ]
-        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
-        items = json.loads(result.stdout)
-        if isinstance(items, dict):
-            items = [items]
-
-        for item in items:
-            name = item.get('Name', '')
-            pnp = item.get('PNPDeviceID', '')
-            vid = pid = None
-            m = RE_VID_PID.search(pnp)
-            if m:
-                vid, pid = m.group(1).lower(), m.group(2).lower()
-            impresoras.append({
-                'nombre': name,
-                'tipo': 'USB' if 'USB' in pnp.upper() else 'Desconocido',
-                'modelo': '',
-                'ip': '',
-                'ubicacion': 'Local',
-                'estado': 'Conectado',
-                'vendor_id': vid,
-                'product_id': pid
-            })
+        cur.execute(
+            "UPDATE printers SET "
+            "nombre = %s, tipo = %s, modelo = %s, ip = %s, "
+            "ubicacion = %s, estado = %s, vendor_id = %s, product_id = %s "
+            "WHERE id = %s",
+            (
+                data.get('nombre'),
+                data.get('tipo'),
+                data.get('modelo'),
+                data.get('ip'),
+                data.get('ubicacion'),
+                data.get('estado', 'Conectado'),
+                data.get('vendor_id'),
+                data.get('product_id'),
+                id
+            )
+        )
+        conn.commit()
+        return jsonify({"success": True}), 200
     except Exception as e:
-        print("Error Windows scan:", e)
-    return impresoras
+        conn.rollback()
+        return jsonify({"success": False, "message": str(e)}), 400
+    finally:
+        cur.close()
+        conn.close()
 
-
-def obtener_impresoras_linux():
-    impresoras = []
+# Eliminar una impresora
+@bp.route('/api/<int:id>', methods=['DELETE'])
+def eliminar_impresora(id):
+    conn = conectar()
+    cur = conn.cursor()
+    
     try:
-        # Escaneo USB con pyusb
-        for d in usb.core.find(find_all=True):
-            vid = f"{d.idVendor:04x}"
-            pid = f"{d.idProduct:04x}"
-            try:
-                prod = usb.util.get_string(d, d.iProduct) or ''
-            except:
-                prod = ''
-            impresoras.append({
-                'nombre': prod or f'USB {vid}:{pid}',
-                'tipo': 'USB',
-                'modelo': prod,
-                'ip': 'N/A',
-                'ubicacion': 'Local',
-                'estado': 'Conectado',
-                'vendor_id': vid,
-                'product_id': pid
-            })
+        cur.execute("DELETE FROM printers WHERE id = %s", (id,))
+        conn.commit()
+        return jsonify({"success": True}), 200
     except Exception as e:
-        print("Error Linux scan:", e)
-    return impresoras
-
-
-def obtener_impresoras_macos():
-    impresoras = []
-    try:
-        sp = subprocess.run(['system_profiler', 'SPUSBDataType', '-json'],
-                             capture_output=True, text=True, check=True)
-        j = json.loads(sp.stdout)
-        usb_devices = j.get('SPUSBDataType', [])
-
-        def walk_usb(dev):
-            vid = dev.get('vendor_id') or dev.get('vendorID')
-            pid = dev.get('product_id') or dev.get('productID')
-            name = dev.get('_name') or dev.get('product') or ''
-            if vid and isinstance(vid, int):
-                vid = f"{vid:04x}"
-            if pid and isinstance(pid, int):
-                pid = f"{pid:04x}"
-            if name or vid:
-                impresoras.append({
-                    'nombre': name or f'USB {vid}:{pid}',
-                    'tipo': 'USB',
-                    'modelo': name,
-                    'ip': 'N/A',
-                    'ubicacion': 'Local',
-                    'estado': 'Conectado',
-                    'vendor_id': vid,
-                    'product_id': pid
-                })
-            # Revisar children
-            for k, v in dev.items():
-                if isinstance(v, list):
-                    for child in v:
-                        if isinstance(child, dict):
-                            walk_usb(child)
-
-        for dev in usb_devices:
-            walk_usb(dev)
-    except Exception as e:
-        print("Error macOS scan:", e)
-    return impresoras
+        conn.rollback()
+        return jsonify({"success": False, "message": str(e)}), 400
+    finally:
+        cur.close()
+        conn.close()

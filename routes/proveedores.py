@@ -1,9 +1,12 @@
 from flask import Blueprint, render_template, jsonify, request
 from conexion import conectar
+from utils import login_required, solo_admin_required
 
 bp = Blueprint('proveedores', __name__)
 
 @bp.route('/proveedores')
+@login_required
+@solo_admin_required
 def proveedores():
     return render_template("proveedores.html")
 

@@ -28,7 +28,8 @@ def login():
                 nombres = user[2].split()
                 session['iniciales'] = ''.join([name[0] for name in nombres[:2]]).upper()
                 
-                return jsonify(success=True)
+                # Devolver el rol para redirección en frontend
+                return jsonify(success=True, rol=user[3])
             else:
                 return jsonify(success=False, error='Credenciales inválidas'), 401
         except Exception as e:
@@ -58,7 +59,11 @@ def login():
                 nombres = user[2].split()
                 session['iniciales'] = ''.join([name[0] for name in nombres[:2]]).upper()
                 
-                return redirect(url_for('home.home'))
+                # Redirigir según el rol
+                if user[3] == 'empleado':
+                    return redirect(url_for('facturacion.facturacion'))
+                else:
+                    return redirect(url_for('home.home'))
             else:
                 flash('Credenciales inválidas', 'danger')
         except Exception as e:
@@ -71,6 +76,15 @@ def login():
 
 @bp.route('/logout')
 def logout():
+    # Guardar el rol antes de limpiar la sesión
+    user_role = session.get('rol', '')
+    
+    # Limpiar la sesión
     session.clear()
     flash('Has cerrado sesión correctamente', 'success')
-    return redirect(url_for('login.login'))
+    
+    # Redirigir según el rol del usuario
+    if user_role == 'empleado':
+        return redirect(url_for('facturacion.facturacion'))
+    else:
+        return redirect(url_for('login.login'))

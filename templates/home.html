@@ -16,7 +16,7 @@
 
 <body id="appBody" data-rol="{{ session.get('rol', '') }}">
     {% block sidebar %}
-    <aside class="sidebar  {% if user_role != 'admin' %}collapsed{% endif %}" id="sidebar">
+    <aside class="sidebar {% if user_role != 'admin' %}collapsed{% endif %}" id="sidebar">
         <div class="sidebar-header">
             <div class="logo">
                 <i class="fas fa-file-invoice-dollar"></i>

@@ -3,10 +3,13 @@ from flask import Blueprint, render_template, request, jsonify
 from conexion import conectar
 from werkzeug.security import generate_password_hash
 import re
+from utils import login_required, solo_admin_required
 
 bp = Blueprint('usuarios', __name__)
 
 @bp.route('/usuarios')
+@login_required
+@solo_admin_required
 def usuarios():
     return render_template("usuarios.html")
 

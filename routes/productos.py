@@ -1,6 +1,7 @@
 from flask import Blueprint, render_template, jsonify, request
 from conexion import conectar
 import math
+from utils import login_required, solo_admin_required
 
 bp = Blueprint('productos', __name__)
 
@@ -90,6 +91,8 @@ def manejar_db(operacion, *args, **kwargs):
         conn.close()
 
 @bp.route('/productos')
+@login_required
+@solo_admin_required
 def productos_page():
     categoria_filtro = request.args.get('categoria', 'Todos')
     buscar_filtro = request.args.get('buscar', '').strip()

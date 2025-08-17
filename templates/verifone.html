@@ -1,94 +1,69 @@
 {% extends "home.html" %}
 
-{% block title %}Buscar Verifone Conectados{% endblock %}
+{% block title %}Gestión de Impresoras Verifone{% endblock %}
 
-    {% block styles %}
-    <link rel="stylesheet" href="/static/css/verifone.css">
-    {% endblock %}
-    
-
+{% block styles %}
+<link rel="stylesheet" href="/static/css/verifone.css">
+{% endblock %}
 
 {% block content %}
-    <div class="container">
-        <div class="content">
-            <div class="card">
-                <div class="card-title">
-                    <i class="fas fa-microchip"></i>
-                    <h2>Estado del Dispositivo</h2>
+<div class="container">
+    <div class="header-section">
+        <h1><i class="fas fa-print"></i> Impresoras Verifone</h1>
+        <button id="addPrinterBtn" class="btn btn-primary">
+            <i class="fas fa-plus-circle"></i> Agregar Impresora
+        </button>
+    </div>
+
+    <div id="printersContainer" class="printers-grid">
+        <!-- Las tarjetas de impresoras se cargarán aquí -->
+    </div>
+</div>
+
+<!-- Modal para agregar/editar impresora -->
+<div id="printerModal" class="modal hidden">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="modalTitle"><i class="fas fa-print"></i> Agregar Nueva Impresora</h2>
+            <span class="close">&times;</span>
+        </div>
+        <div class="modal-body">
+            <form id="printerForm">
+                <input type="hidden" id="printerId">
+                <div class="form-group">
+                    <label for="nombre"><i class="fas fa-font"></i> Nombre</label>
+                    <input type="text" id="nombre" name="nombre" required placeholder="Ej: Impresora Principal">
                 </div>
-                
-                <div class="status-bar">
-                    <div id="statusIndicator" class="status-indicator"></div>
-                    <div class="status-text" id="statusText">No se ha seleccionado ningún dispositivo</div>
+                <div class="form-group">
+                    <label for="vendor"><i class="fas fa-id-card"></i> Vendor ID</label>
+                    <input type="text" id="vendor" name="vendor" required placeholder="Ej: 1234">
                 </div>
-                
-                <div id="deviceInfo" class="device-info hidden">
-                    <div class="device-card">
-                        <div class="device-name" id="deviceName">Terminal Verifone VX520</div>
-                        <div class="device-detail">
-                            <span class="device-label">Puerto:</span>
-                            <span id="devicePort">COM3</span>
-                        </div>
-                        <div class="device-detail">
-                            <span class="device-label">Fabricante:</span>
-                            <span id="deviceManufacturer">Verifone Inc.</span>
-                        </div>
-                        <div class="device-detail">
-                            <span class="device-label">Estado:</span>
-                            <span id="deviceStatus">Desconectado</span>
-                        </div>
-                    </div>
+                <div class="form-group">
+                    <label for="product"><i class="fas fa-barcode"></i> Product ID</label>
+                    <input type="text" id="product" name="product" required placeholder="Ej: 5678">
                 </div>
-                
-                <div id="noDeviceMessage" class="notification info">
-                    <i class="fas fa-info-circle"></i>
-                    <span>No se ha seleccionado ningún dispositivo Verifone. Haz clic en "Buscar Dispositivos" para comenzar.</span>
+                <div class="form-group">
+                    <label for="port"><i class="fas fa-plug"></i> Puerto</label>
+                    <input type="text" id="port" name="port" placeholder="Ej: COM3">
                 </div>
-                
-                <div class="btn-container">
-                    <button id="searchBtn" class="btn btn-primary" onclick="searchDevices()">
-                        <i class="fas fa-search"></i> Buscar Dispositivos
+                <div class="form-group">
+                    <label for="baudrate"><i class="fas fa-tachometer-alt"></i> Baud Rate</label>
+                    <input type="number" id="baudrate" name="baudrate" value="9600">
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" id="cancelBtn">
+                        <i class="fas fa-times"></i> Cancelar
                     </button>
-                    <button id="testBtn" class="btn btn-success" onclick="testDevice()" disabled>
-                        <i class="fas fa-plug"></i> Probar Conexión
-                    </button>
-                    <button id="clearBtn" class="btn btn-danger" onclick="clearSelection()" disabled>
-                        <i class="fas fa-times"></i> Deseleccionar
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> Guardar
                     </button>
                 </div>
-            </div>
-            
-            <div id="searchResults" class="search-results hidden">
-                <div class="card">
-                    <div class="card-title">
-                        <i class="fas fa-list"></i>
-                        <h2>Dispositivos Detectados</h2>
-                    </div>
-                    
-                    <div id="loading" class="loading hidden">
-                        <div class="spinner"></div>
-                        <p>Buscando dispositivos Verifone...</p>
-                    </div>
-                    
-                    <div id="resultsContainer" class="results-grid">
-                        <!-- Los dispositivos aparecerán aquí -->
-                    </div>
-                    
-                    <div id="noDevicesMessage" class="notification info hidden">
-                        <i class="fas fa-exclamation-circle"></i>
-                        <span>No se encontraron dispositivos Verifone conectados. Por favor, conecta un dispositivo e intenta de nuevo.</span>
-                    </div>
-                </div>
-            </div>
-            
-            <div id="testResult" class="notification hidden">
-                <!-- Resultados de la prueba aparecerán aquí -->
-            </div>
+            </form>
         </div>
     </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
 <script src="/static/js/verifone.js"></script>
-
 {% endblock %}

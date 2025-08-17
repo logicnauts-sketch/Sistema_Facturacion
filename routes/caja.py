@@ -1,6 +1,7 @@
 from flask import Blueprint, render_template, jsonify, request, session
 import datetime
 from conexion import conectar
+from utils import login_required, solo_admin_required
 
 bp = Blueprint('caja', __name__)
 
@@ -43,6 +44,7 @@ def obtener_estadisticas_facturacion_turno(turno_id):
             pass
 
 @bp.route('/caja')
+@login_required
 def caja():
     """Renderiza la vista de caja sin precargar datos"""
     return render_template("caja.html")

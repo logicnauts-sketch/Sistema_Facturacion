@@ -2,10 +2,13 @@ from flask import Blueprint, render_template, redirect, session,url_for, jsonify
 from conexion import conectar
 from datetime import datetime
 import logging
+from utils import login_required, solo_admin_required
 
 bp = Blueprint('home', __name__)
 
 @bp.route('/')
+@login_required
+@solo_admin_required
 def inicio():
     # Verificar si el usuario ya está autenticado
     if 'user_id' in session:
@@ -15,6 +18,8 @@ def inicio():
 
 
 @bp.route('/home')
+@login_required
+@solo_admin_required
 def home():
     if 'user_id' not in session:
         return redirect('/login')

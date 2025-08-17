@@ -1,7 +1,6 @@
-// home.js
 'use strict';
 
-// Elementos del DOM (pueden ser null si la plantilla no los incluye)
+// Elementos del DOM
 const floatingToggle = document.getElementById('floatingToggle');
 const menuToggle     = document.getElementById('menuToggle');
 const sidebar        = document.getElementById('sidebar');
@@ -10,34 +9,42 @@ const userBtn        = document.getElementById('userBtn');
 const dropdownMenu   = document.getElementById('dropdownMenu');
 const accountingBtn  = document.getElementById('accountingBtn');
 const accountingDropdown = document.getElementById('accountingDropdown');
+const sidebarOverlay = document.querySelector('.sidebar-overlay');
 
 // Estado del sidebar
 let sidebarCollapsed = false;
 
-// Función para alternar el sidebar (segura si sidebar es null)
+// Función para alternar el sidebar
 function toggleSidebar() {
-  if (!sidebar || !appContainer) return;
-
+  if (!sidebar) return;
+  
+  // Para móviles
+  if (window.innerWidth <= 992) {
+    sidebar.classList.toggle('mobile-open');
+    return;
+  }
+  
+  // Para escritorio
   sidebarCollapsed = !sidebarCollapsed;
 
   if (sidebarCollapsed) {
     sidebar.classList.add('collapsed');
     sidebar.classList.remove('expanded');
-    appContainer.classList.add('expanded-content');
+    if (appContainer) appContainer.classList.add('expanded-content');
   } else {
     sidebar.classList.remove('collapsed');
     sidebar.classList.add('expanded');
-    appContainer.classList.remove('expanded-content');
+    if (appContainer) appContainer.classList.remove('expanded-content');
   }
 
-  // Actualizar icono del botón de menú (si existe)
+  // Actualizar icono del botón de menú
   const menuIcon = menuToggle && menuToggle.querySelector('i');
   if (menuIcon) {
     menuIcon.className = sidebarCollapsed ? 'fas fa-bars' : 'fas fa-times';
   }
 }
 
-// Listeners para toggles (si existen)
+// Listeners para toggles
 if (floatingToggle) floatingToggle.addEventListener('click', toggleSidebar);
 if (menuToggle)     menuToggle.addEventListener('click', toggleSidebar);
 
@@ -49,13 +56,29 @@ if (userBtn && dropdownMenu) {
   });
 }
 
-// Cerrar dropdown al hacer clic fuera (usuario + demás)
+// Cerrar dropdowns al hacer clic fuera
 document.addEventListener('click', (e) => {
+  // Dropdown de usuario
   if (dropdownMenu && dropdownMenu.classList.contains('show') &&
       !e.target.closest('#userBtn') && !e.target.closest('.dropdown-menu')) {
     dropdownMenu.classList.remove('show');
   }
+  
+  // Sidebar en móviles
+  if (sidebar && sidebar.classList.contains('mobile-open') && 
+      !e.target.closest('#sidebar') && 
+      e.target !== floatingToggle && 
+      e.target !== menuToggle) {
+    sidebar.classList.remove('mobile-open');
+  }
 });
+
+// Cerrar sidebar al hacer clic en el overlay
+if (sidebarOverlay) {
+  sidebarOverlay.addEventListener('click', function() {
+    sidebar.classList.remove('mobile-open');
+  });
+}
 
 // Menu items -> actualizar título y active
 const menuItems = document.querySelectorAll('.menu-item');
@@ -78,7 +101,7 @@ if (menuItems && menuItems.length) {
   });
 }
 
-// Gráfico - envolvemos en DOMContentLoaded porque manipula estilos
+// Gráfico
 document.addEventListener('DOMContentLoaded', () => {
   const bars = document.querySelectorAll('.bar');
   const chartBtns = document.querySelectorAll('.chart-btn');
@@ -130,7 +153,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   updateChart('month');
-}); // fin DOMContentLoaded del chart
+});
 
 // Dropdowns de contabilidad / impuestos / reportes / configuración
 if (accountingBtn && accountingDropdown) {
@@ -141,7 +164,7 @@ if (accountingBtn && accountingDropdown) {
   });
 }
 
-// taxesBtn y taxesDropdown (selector seguro)
+// taxesBtn y taxesDropdown
 const taxesBtn = document.querySelector('#accountingDropdown .accounting-dropdown .dropdown-trigger');
 const taxesDropdown = document.querySelector('#accountingDropdown .accounting-dropdown .accounting-menu');
 if (taxesBtn && taxesDropdown) {
@@ -174,7 +197,7 @@ if (configuracionBtn && configuracionDropdown) {
   });
 }
 
-// Cerrar todos los dropdowns con clic fuera (ya hay una escucha previa, ampliamos)
+// Cerrar todos los dropdowns con clic fuera
 document.addEventListener('click', (e) => {
   // contabilidad
   if (accountingBtn && accountingDropdown && accountingDropdown.classList.contains('show')) {
@@ -206,7 +229,7 @@ document.addEventListener('click', (e) => {
   }
 });
 
-// --- ROLE-based behaviour (lee role desde DOM, sin Jinja) ---
+// --- ROLE-based behaviour ---
 (function handleRoleBehaviour() {
   const body = document.getElementById('appBody') || document.body;
   const role = body ? (body.dataset.rol || '') : '';
@@ -227,8 +250,6 @@ document.addEventListener('click', (e) => {
       toggleBtn.removeAttribute('aria-disabled');
       toggleBtn.style.pointerEvents = '';
       toggleBtn.title = '';
-      // añadir listener si no existe
-      // evitamos duplicar listeners comprobando una marca
       if (!toggleBtn.dataset.initialized) {
         toggleBtn.addEventListener('click', (e) => {
           e.preventDefault();

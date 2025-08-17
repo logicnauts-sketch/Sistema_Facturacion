@@ -2,10 +2,13 @@ from flask import Blueprint, render_template, jsonify, request
 from datetime import datetime
 import time
 from conexion import conectar
+from utils import login_required, solo_admin_required
 
 bp = Blueprint('inventario', __name__)
 
 @bp.route('/inventario')
+@login_required
+@solo_admin_required
 def inventario():
     return render_template("inventario.html")
 

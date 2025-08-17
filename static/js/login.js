@@ -83,8 +83,14 @@ document.addEventListener('DOMContentLoaded', () => {
             if (response.ok && data.success) {
                 // Redirección exitosa
                 loginButton.innerHTML = '<i class="fas fa-check"></i> Acceso concedido';
+                
                 setTimeout(() => {
-                    window.location.href = '/home';
+                    // Redirigir según el rol del usuario
+                    if (data.rol === 'empleado') {
+                        window.location.href = '/facturacion';
+                    } else {
+                        window.location.href = '/home';
+                    }
                 }, 1000);
             } else {
                 // Mostrar error del servidor

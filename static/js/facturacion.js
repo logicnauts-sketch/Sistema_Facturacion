@@ -368,6 +368,7 @@ function openCreditModal() {
         dueDate.value = nextWeek.toISOString().split('T')[0];
     }
     
+    resetCreditButton();
     openModal(document.getElementById('credit-modal'));
 }
 
@@ -406,9 +407,9 @@ async function generateInvoice() {
     const subtotalEl = document.getElementById('subtotal');
     const itbisTotalEl = document.getElementById('itbis-total');
     const invoiceBtn = document.getElementById('invoice-btn');
-    const dueDate = document.getElementById('due-date');
+    const dueDateElement = document.getElementById('due-date');
 
-    // Verificar estado de caja con la función corregida
+    // Verificar estado de caja
     const cajaAbierta = await verificarEstadoCaja();
     if (!cajaAbierta) {
         notyf.error('No se puede facturar: Caja cerrada');
@@ -436,11 +437,19 @@ async function generateInvoice() {
             precio: item.price,
             itbis: item.itbis
         })),
-        es_proveedor: currentClient.type === 'proveedor'
+        es_proveedor: currentClient.type === 'proveedor',
+        tipo: currentClient.type === 'proveedor' ? 'compra' : 'venta'
     };
 
-    if (currentPaymentMethod === 'credito' && dueDate) {
-        facturaData.fecha_vencimiento = dueDate.value;
+    // Validación para crédito
+    if (currentPaymentMethod === 'credito') {
+        if (dueDateElement && dueDateElement.value) {
+            facturaData.fecha_vencimiento = dueDateElement.value;
+        } else {
+            notyf.error('Se requiere fecha de vencimiento para créditos');
+            resetInvoiceButton();
+            return;
+        }
     }
 
     invoiceBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Procesando...';
@@ -456,25 +465,27 @@ async function generateInvoice() {
         const data = await response.json();
         
         if (data.success) {
-            // Registrar movimiento en caja
-            const tipo = currentClient.type === 'proveedor' ? 'gasto' : 'venta';
-            const descripcion = `Factura #${data.factura_id} - ${currentClient.name}`;
-            
-            try {
-                await fetch('/api/caja/movimientos', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        tipo: tipo,
-                        metodo_pago: currentPaymentMethod,
-                        descripcion: descripcion,
-                        monto: total,
-                        factura_id: data.factura_id
-                    })
-                });
-            } catch (error) {
-                console.error('Error registrando movimiento en caja:', error);
-                notyf.error('Movimiento no registrado en caja. Contacte soporte');
+            // Registrar movimiento en caja (solo si no es crédito)
+            if (currentPaymentMethod !== 'credito') {
+                const tipo = currentClient.type === 'proveedor' ? 'gasto' : 'venta';
+                const descripcion = `Factura #${data.factura_id} - ${currentClient.name}`;
+                
+                try {
+                    await fetch('/api/caja/movimientos', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            tipo: tipo,
+                            metodo_pago: currentPaymentMethod,
+                            descripcion: descripcion,
+                            monto: total,
+                            factura_id: data.factura_id
+                        })
+                    });
+                } catch (error) {
+                    console.error('Error registrando movimiento en caja:', error);
+                    notyf.error('Movimiento no registrado en caja. Contacte soporte');
+                }
             }
             
             // Cerrar modales
@@ -483,8 +494,13 @@ async function generateInvoice() {
             closeModal(document.getElementById('transfer-modal'));
             closeModal(document.getElementById('credit-modal'));
             
-            // Manejo de proveedores (descarga de PDF)
-            if (currentClient.type === 'proveedor') {
+            // Manejo de descarga de factura PDF para:
+            // - Todas las compras (proveedores)
+            // - Todas las ventas a crédito
+            const esCompra = currentClient.type === 'proveedor';
+            const esCredito = currentPaymentMethod === 'credito';
+            
+            if (esCompra || esCredito) {
                 Swal.fire({
                     title: '¿Descargar factura?',
                     text: '¿Desea descargar la factura en PDF?',
@@ -506,7 +522,7 @@ async function generateInvoice() {
                     setTimeout(() => resetSystem(), 1000);
                 });
             } else {
-                // Reset normal para clientes
+                // Reset normal para ventas al contado
                 setTimeout(() => resetSystem(), 1000);
             }
         } else {
@@ -517,9 +533,19 @@ async function generateInvoice() {
         notyf.error('Error de conexión con el servidor');
         console.error(error);
         resetInvoiceButton();
+        
+        // Restablecer botón de crédito si está procesando
+        if (currentPaymentMethod === 'credito') {
+            resetCreditButton();
+        }
     } finally {
         if (currentPaymentMethod === 'tarjeta') {
             closeModal(document.getElementById('card-validation-modal'));
+        }
+        
+        // Restablecer botón de crédito
+        if (currentPaymentMethod === 'credito') {
+            resetCreditButton();
         }
     }
 }
@@ -577,6 +603,14 @@ function resetConfirmButton() {
     }
 }
 
+function resetCreditButton() {
+    const confirmCredit = document.getElementById('confirm-credit');
+    if (confirmCredit) {
+        confirmCredit.disabled = false;
+        confirmCredit.innerHTML = '<i class="fas fa-check-circle"></i> Confirmar Crédito';
+    }
+}
+
 // Inicialización de la aplicación
 document.addEventListener('DOMContentLoaded', () => {
     const today = new Date();
@@ -604,6 +638,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const cancelPayment = document.getElementById('cancel-payment');
     const confirmTransfer = document.getElementById('confirm-transfer');
     const confirmCredit = document.getElementById('confirm-credit');
+    const cancelCredit1 = document.getElementById('cancel-credit');
+    const cancelCredit2 = document.getElementById('cancel-credit-2');
 
     // Configuración de event listeners
     if (productSearch) {
@@ -746,11 +782,29 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // Eventos para crédito
+    if (confirmCredit) {
+        confirmCredit.addEventListener('click', function() {
+            this.disabled = true;
+            this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Procesando...';
+            generateInvoice();
+        });
+    }
+
+    // Botones de cancelar en el modal de crédito
+    [cancelCredit1, cancelCredit2].forEach(btn => {
+        if (btn) btn.addEventListener('click', () => {
+            closeModal(document.getElementById('credit-modal'));
+            resetCreditButton();
+        });
+    });
+
     document.querySelectorAll('.modal').forEach(modal => {
         modal.addEventListener('click', (e) => {
             if (e.target === modal) {
                 closeModal(modal);
                 if (modal.id === 'payment-modal') resetConfirmButton();
+                if (modal.id === 'credit-modal') resetCreditButton();
             }
         });
     });
@@ -818,4 +872,3 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 });
-

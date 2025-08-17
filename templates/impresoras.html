@@ -1,65 +1,113 @@
 {% extends "home.html" %}
 
-{% block title %}Gestión de Clientes{% endblock %}
+{% block title %}Gestión de Impresoras{% endblock %}
 
-    {% block styles %}
-    <link rel="stylesheet" href="/static/css/impresoras.css">
-    {% endblock %}
-    
-
+{% block styles %}
+<link rel="stylesheet" href="/static/css/impresoras.css">
+{% endblock %}
 
 {% block content %}
-    <div class="container">
-        <div class="header">
-            <h1><i class="fas fa-print"></i> Buscador de Impresoras 2conect</h1>
-            <p>Seleccione y guarde su impresora preferida</p>
+<div class="container">
+    <div class="header">
+        <h1><i class="fas fa-print"></i> Gestión de Impresoras</h1>
+        <p>Administre las impresoras disponibles para venta</p>
+    </div>
+
+    <div class="actions">
+        <button class="btn btn-primary" id="addPrinterBtn">
+            <i class="fas fa-plus"></i> Agregar Impresora
+        </button>
+    </div>
+
+    <div class="printers-grid" id="printersContainer">
+        <!-- Cards de impresoras se cargarán aquí -->
+    </div>
+
+    <div class="confirmation" id="confirmationMessage">
+        <p><i class="fas fa-check-circle"></i> Operación realizada correctamente</p>
+    </div>
+</div>
+
+<!-- Modal para agregar/editar impresora -->
+<div id="printerModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="modalTitle"><i class="fas fa-print"></i> Agregar Impresora</h2>
+            <span class="close-modal" id="closeModal">&times;</span>
         </div>
-        
-        <div class="content">
-            <div class="current-printer" id="currentPrinterSection">
-                <h2><i class="fas fa-check-circle"></i> Impresora seleccionada</h2>
-                <div id="currentPrinterDetails">
-                    <!-- Se rellenará dinámicamente -->
+
+        <div class="modal-body">
+            <form id="printerForm">
+                <input type="hidden" id="printerId">
+
+                <!-- Vendor ID y Product ID en la misma fila -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="vendor">Vendor ID:</label>
+                        <input type="text" id="vendor" name="vendor" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="product">Product ID:</label>
+                        <input type="text" id="product" name="product" required>
+                    </div>
                 </div>
-            </div>
-            
-            <div class="no-printer" id="noPrinterSection">
-                <i class="fas fa-print"></i>
-                <h3>No hay impresora seleccionada</h3>
-                <p>Seleccione una impresora de la lista para comenzar a utilizarla</p>
-            </div>
-            
-            <div class="confirmation" id="confirmationMessage">
-                <p><i class="fas fa-check-circle"></i> Impresora guardada correctamente</p>
-            </div>
-            
-            <div class="actions">
-                <button class="btn btn-primary" id="searchButton">
-                    <i class="fas fa-search"></i> Buscar Impresoras
-                </button>
-                <button class="btn btn-secondary" id="saveButton" disabled>
-                    <i class="fas fa-save"></i> Guardar Impresora
-                </button>
-            </div>
+
+                <div class="form-group">
+                    <label for="name">Nombre:</label>
+                    <input type="text" id="name" name="name" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="type">Tipo:</label>
+                    <select id="type" name="type" required>
+                        <option value="USB">USB</option>
+                        <option value="Red">Red</option>
+                        <option value="WiFi">WiFi</option>
+                        <option value="Bluetooth">Bluetooth</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="model">Modelo:</label>
+                    <input type="text" id="model" name="model" required>
+                </div>
+
+                <!-- IP y Ubicación en la misma fila -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="ip">IP (opcional):</label>
+                        <input type="text" id="ip" name="ip">
+                    </div>
+                    <div class="form-group">
+                        <label for="location">Ubicación:</label>
+                        <input type="text" id="location" name="location" required>
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Guardar</button>
+                    <button type="button" class="btn btn-secondary" id="cancelBtn">Cancelar</button>
+                </div>
+            </form>
         </div>
     </div>
-    
-    <!-- Modal de resultados -->
-    <div id="resultsModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2><i class="fas fa-print"></i> Impresoras Detectadas</h2>
-                <span class="close-modal" id="closeModal">&times;</span>
-            </div>
-            
-            <div class="modal-body" id="modalBody">
-                <!-- Contenido dinámico se insertará aquí -->
-            </div>
+</div>
+
+<!-- Modal para detalles -->
+<div id="detailsModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2><i class="fas fa-info-circle"></i> Detalles de Impresora</h2>
+            <span class="close-modal" id="closeDetailsModal">&times;</span>
+        </div>
+
+        <div class="modal-body" id="detailsContent">
+            <!-- Detalles se cargarán aquí -->
         </div>
     </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
 <script src="/static/js/impresoras.js"></script>
-
 {% endblock %}

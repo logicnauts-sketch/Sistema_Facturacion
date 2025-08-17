@@ -4,6 +4,7 @@ import os
 import uuid
 import logging
 from conexion import conectar
+from utils import login_required, solo_admin_required
 
 bp = Blueprint('empresa', __name__, url_prefix='/empresa')
 
@@ -67,6 +68,8 @@ def obtener_datos_empresa():
 
 
 @bp.route('/', methods=['GET'])
+@login_required
+@solo_admin_required
 def obtener_empresa():
     """Renderiza la página de configuración de empresa"""
     conn = None

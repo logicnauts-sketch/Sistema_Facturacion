@@ -1,6 +1,7 @@
 from flask import Blueprint, render_template, jsonify, request
 from datetime import datetime, timedelta, time
 from conexion import conectar
+from utils import login_required, solo_admin_required
 
 bp = Blueprint('controlventas', __name__)
 
@@ -108,6 +109,8 @@ def calcular_tendencias(ventas_actuales, ventas_anteriores):
         return 0, 0, 0
 
 @bp.route('/controlventas')
+@login_required
+@solo_admin_required
 def controlventas():
     return render_template("controlventas.html")
 

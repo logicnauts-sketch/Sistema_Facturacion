@@ -8,6 +8,8 @@ import pdfkit
 import io
 import os
 import requests  # Para comunicación con el agente local
+from utils import login_required, solo_admin_required
+
 
 bp = Blueprint('facturacion', __name__)
 
@@ -236,86 +238,6 @@ def imprimir_ticket(factura_id):
     except Exception as e:
         return {'success': False, 'error': f"Error general: {str(e)}"}
 
-def generar_factura_proveedor_pdf(factura_id):
-    """Genera PDF para facturas de proveedor"""
-    config_empresa = obtener_configuracion_empresa()
-    try:
-        conn = conectar()
-        cursor = conn.cursor(dictionary=True)
-        cursor.execute("""
-            SELECT f.*, 
-                   p.nombre AS proveedor_nombre,
-                   p.rnc_cedula AS proveedor_rnc,
-                   p.direccion AS proveedor_direccion,
-                   p.telefono AS proveedor_telefono
-            FROM facturas f
-            JOIN proveedores p ON f.cliente_id = p.id
-            WHERE f.id = %s
-        """, (factura_id,))
-        factura = cursor.fetchone()
-        
-        if not factura:
-            return None
-        
-        cursor.execute("""
-            SELECT p.nombre, df.cantidad, df.precio, df.itbis
-            FROM detalle_factura df
-            JOIN productos p ON df.producto_id = p.id
-            WHERE df.factura_id = %s
-        """, (factura_id,))
-        detalles = cursor.fetchall()
-        
-        subtotal = float(factura['total']) - float(factura['itbis_total'])
-        itbis_total = float(factura['itbis_total'])
-        total = float(factura['total'])
-        fecha_creacion = factura['fecha_creacion'].strftime('%d/%m/%Y %H:%M')
-
-        # HTML para el PDF (igual que antes)
-        html_content = f"""
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset="UTF-8">
-            <title>Factura #{factura_id}</title>
-            <style>
-                /* Estilos CSS... */
-            </style>
-        </head>
-        <body>
-            <!-- Contenido HTML... -->
-        </body>
-        </html>
-        """
-
-        # Configuración para Linux
-        config = pdfkit.configuration(wkhtmltopdf='/usr/bin/wkhtmltopdf')
-        
-        options = {
-            'page-size': 'A4',
-            'margin-top': '0.5in',
-            'margin-right': '0.5in',
-            'margin-bottom': '0.5in',
-            'margin-left': '0.5in',
-            'encoding': "UTF-8",
-            'no-outline': None,
-            'enable-local-file-access': None,
-            'print-media-type': None,
-            'dpi': 300,
-            'zoom': 1.0
-        }
-
-        pdf_bytes = pdfkit.from_string(html_content, False, configuration=config, options=options)
-        pdf_file = io.BytesIO(pdf_bytes)
-        pdf_file.seek(0)
-        return pdf_file
-        
-    except Exception as e:
-        print(f"Error al generar PDF: {str(e)}")
-        return None
-    finally:
-        cursor.close()
-        conn.close()
-
 def generar_ncf():
     """Genera un NCF válido según normativa DGII"""
     prefijo = "B01"  # Bienes normalizados
@@ -391,8 +313,300 @@ def obtener_turno_actual():
         cursor.close()
         conn.close()
 
+def generar_factura_pdf(factura_id):
+    """Genera PDF para facturas (tanto compras como ventas)"""
+    config_empresa = obtener_configuracion_empresa()
+    try:
+        conn = conectar()
+        cursor = conn.cursor(dictionary=True)
+        
+        # Obtener datos generales de la factura
+        cursor.execute("""
+            SELECT f.*, 
+                   COALESCE(c.nombre, p.nombre) AS persona_nombre,
+                   COALESCE(c.cedula, p.rnc_cedula) AS persona_doc,
+                   COALESCE(c.direccion, p.direccion) AS persona_direccion,
+                   COALESCE(c.telefono, p.telefono) AS persona_telefono,
+                   f.tipo,
+                   f.metodo_pago,
+                   f.fecha_vencimiento
+            FROM facturas f
+            LEFT JOIN clientes c ON f.cliente_id = c.id AND f.tipo = 'venta'
+            LEFT JOIN proveedores p ON f.cliente_id = p.id AND f.tipo = 'compra'
+            WHERE f.id = %s
+        """, (factura_id,))
+        factura = cursor.fetchone()
+        
+        if not factura:
+            return None
+        
+        # Obtener detalles de los productos
+        cursor.execute("""
+            SELECT p.nombre, df.cantidad, df.precio, df.itbis
+            FROM detalle_factura df
+            JOIN productos p ON df.producto_id = p.id
+            WHERE df.factura_id = %s
+        """, (factura_id,))
+        detalles = cursor.fetchall()
+        
+        # Cálculos financieros
+        subtotal = float(factura['total']) - float(factura['itbis_total'])
+        itbis_total = float(factura['itbis_total'])
+        total = float(factura['total'])
+        fecha_creacion = factura['fecha_creacion'].strftime('%d/%m/%Y %H:%M')
+        
+        # Determinar tipo de factura
+        es_compra = factura['tipo'] == 'compra'
+        es_credito = factura['metodo_pago'].lower() == 'credito'
+        
+        # Formatear fecha de vencimiento si existe
+        fecha_vencimiento = ""
+        if factura['fecha_vencimiento']:
+            if isinstance(factura['fecha_vencimiento'], datetime.date):
+                fecha_vencimiento = factura['fecha_vencimiento'].strftime('%d/%m/%Y')
+            else:
+                fecha_vencimiento = factura['fecha_vencimiento']
+        
+        # Construir sección de crédito si aplica
+        credit_info = ""
+        if es_credito:
+            credit_info = f"""
+            <div class="credit-info">
+                <div class="section-title">INFORMACIÓN DE CRÉDITO</div>
+                <div><strong>Fecha de Vencimiento:</strong> {fecha_vencimiento}</div>
+                <div><strong>Estado:</strong> Pendiente de pago</div>
+                <div><strong>Nota:</strong> Este documento representa una obligación financiera</div>
+            </div>
+            """
+        
+        # Construir HTML según el tipo de factura
+        html_content = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>Factura #{factura_id}</title>
+            <style>
+                body {{
+                    font-family: 'Helvetica Neue', Arial, sans-serif;
+                    font-size: 14px;
+                    color: #333;
+                    line-height: 1.6;
+                    padding: 20px;
+                    max-width: 800px;
+                    margin: 0 auto;
+                }}
+                .header {{
+                    text-align: center;
+                    margin-bottom: 30px;
+                    border-bottom: 2px solid #3498db;
+                    padding-bottom: 20px;
+                }}
+                .title {{
+                    font-size: 28px;
+                    font-weight: bold;
+                    margin-bottom: 10px;
+                    color: #2c3e50;
+                }}
+                .company-info {{
+                    margin-bottom: 5px;
+                    color: #7f8c8d;
+                }}
+                .section {{
+                    margin-bottom: 25px;
+                }}
+                .section-title {{
+                    font-size: 18px;
+                    font-weight: bold;
+                    margin-bottom: 15px;
+                    color: #2c3e50;
+                    border-bottom: 1px solid #3498db;
+                    padding-bottom: 5px;
+                }}
+                .invoice-info {{
+                    display: flex;
+                    justify-content: space-between;
+                    margin-bottom: 20px;
+                    background: #f8f9fa;
+                    padding: 15px;
+                    border-radius: 5px;
+                }}
+                .client-info {{
+                    background-color: #f8f9fa;
+                    padding: 15px;
+                    border-radius: 5px;
+                    margin-bottom: 20px;
+                }}
+                .items-table {{
+                    width: 100%;
+                    border-collapse: collapse;
+                    margin-bottom: 20px;
+                }}
+                .items-table th {{
+                    background-color: #2c3e50;
+                    color: white;
+                    text-align: left;
+                    padding: 10px;
+                    font-weight: bold;
+                }}
+                .items-table td {{
+                    padding: 10px;
+                    border-bottom: 1px solid #eee;
+                }}
+                .text-right {{
+                    text-align: right;
+                }}
+                .totals-container {{
+                    margin-top: 30px;
+                    text-align: right;
+                    width: 100%;
+                }}
+                .totals-line {{
+                    display: flex;
+                    justify-content: space-between;
+                    margin-bottom: 8px;
+                    padding-bottom: 8px;
+                    border-bottom: 1px solid #eee;
+                }}
+                .totals-total {{
+                    font-weight: bold;
+                    font-size: 18px;
+                    margin-top: 10px;
+                    padding-top: 10px;
+                    border-top: 2px solid #2c3e50;
+                }}
+                .credit-info {{
+                    background-color: #fff8e1;
+                    padding: 15px;
+                    border-radius: 5px;
+                    margin-top: 20px;
+                    border-left: 4px solid #ffc107;
+                }}
+                .footer {{
+                    margin-top: 40px;
+                    text-align: center;
+                    color: #7f8c8d;
+                    font-size: 12px;
+                    border-top: 1px solid #eee;
+                    padding-top: 15px;
+                }}
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <div class="title">FACTURA {'DE COMPRA' if es_compra else 'DE VENTA'}</div>
+                <div class="company-info">{config_empresa['nombre']}</div>
+                <div class="company-info">{config_empresa['direccion']} | RNC: {config_empresa['rnc']}</div>
+                <div class="company-info">Tel: {config_empresa['telefono']}</div>
+            </div>
+            
+            <div class="invoice-info">
+                <div>
+                    <strong>N° Factura:</strong> #{factura_id}<br>
+                    <strong>NCF:</strong> {factura['ncf']}
+                </div>
+                <div>
+                    <strong>Fecha:</strong> {fecha_creacion}<br>
+                    <strong>Método Pago:</strong> {factura['metodo_pago'].upper()}
+                </div>
+            </div>
+            
+            <div class="section">
+                <div class="section-title">INFORMACIÓN DEL {'PROVEEDOR' if es_compra else 'CLIENTE'}</div>
+                <div class="client-info">
+                    <div><strong>Nombre:</strong> {factura['persona_nombre']}</div>
+                    <div><strong>{'RNC/Cédula' if es_compra else 'Cédula'}:</strong> {factura['persona_doc']}</div>
+                    <div><strong>Dirección:</strong> {factura['persona_direccion']}</div>
+                    <div><strong>Teléfono:</strong> {factura['persona_telefono']}</div>
+                </div>
+            </div>
+            
+            <div class="section">
+                <div class="section-title">DETALLE DE {'COMPRA' if es_compra else 'VENTA'}</div>
+                <table class="items-table">
+                    <thead>
+                        <tr>
+                            <th>Producto/Servicio</th>
+                            <th>Cant.</th>
+                            <th class="text-right">Precio Unitario</th>
+                            <th class="text-right">Subtotal</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {"".join(
+                            f"<tr>"
+                            f"<td>{item['nombre']}</td>"
+                            f"<td>{item['cantidad']}</td>"
+                            f"<td class='text-right'>RD$ {float(item['precio']):,.2f}</td>"
+                            f"<td class='text-right'>RD$ {float(item['precio']) * int(item['cantidad']):,.2f}</td>"
+                            f"</tr>"
+                            for item in detalles
+                        )}
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="totals-container">
+                <div class="totals-line">
+                    <span>Subtotal:</span>
+                    <span>RD$ {subtotal:,.2f}</span>
+                </div>
+                <div class="totals-line">
+                    <span>ITBIS (18%):</span>
+                    <span>RD$ {itbis_total:,.2f}</span>
+                </div>
+                <div class="totals-total">
+                    <span>TOTAL:</span>
+                    <span>RD$ {total:,.2f}</span>
+                </div>
+            </div>
+            
+            {credit_info}
+            
+            <div class="footer">
+                <div>{config_empresa['mensaje_legal']}</div>
+                <div>Documento generado electrónicamente el {datetime.datetime.now().strftime('%d/%m/%Y %H:%M')}</div>
+            </div>
+        </body>
+        </html>
+        """
+        
+        # Configuración para generación de PDF
+        try:
+            # Intentar Linux
+            config = pdfkit.configuration(wkhtmltopdf='/usr/bin/wkhtmltopdf')
+        except OSError:
+            # Si falla, usar Windows
+            config = pdfkit.configuration(
+                wkhtmltopdf=r"C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe"
+            )
+        options = {
+            'page-size': 'A4',
+            'margin-top': '0.5in',
+            'margin-right': '0.5in',
+            'margin-bottom': '0.5in',
+            'margin-left': '0.5in',
+            'encoding': "UTF-8",
+            'enable-local-file-access': None,
+            'dpi': 300
+        }
+
+        pdf_bytes = pdfkit.from_string(html_content, False, configuration=config, options=options)
+        pdf_file = io.BytesIO(pdf_bytes)
+        pdf_file.seek(0)
+        return pdf_file
+        
+    except Exception as e:
+        print(f"Error al generar PDF: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return None
+    finally:
+        cursor.close()
+        conn.close()
 
 @bp.route('/facturacion')
+@login_required
 def facturacion():
     config_empresa = obtener_configuracion_empresa()
     return render_template('facturacion.html', empresa=config_empresa)
@@ -463,6 +677,13 @@ def api_get_personas():
 @bp.route('/api/facturas', methods=['POST'])
 def crear_factura():
     data = request.get_json()
+
+    # Validación para créditos
+    if data['metodo_pago'].lower() == 'credito' and not data.get('fecha_vencimiento'):
+        return jsonify({
+            'success': False,
+            'error': 'Se requiere fecha de vencimiento para créditos'
+        }), 400
 
     responsable = session.get('nombre_completo', 'Sistema')
     
@@ -545,19 +766,27 @@ def crear_factura():
     conn = conectar()
     cursor = conn.cursor()
     try:
+        # Desactivar autocommit para manejar transacción manualmente
+        conn.autocommit = False
+
         # 1. Insertar encabezado de factura en estado PENDIENTE y reservar NCF
         ncf = generar_ncf()
+        
+        # PREPARAR FECHA DE VENCIMIENTO (solo para créditos)
+        fecha_vencimiento = data.get('fecha_vencimiento') if data['metodo_pago'].lower() == 'credito' else None
+        
         cursor.execute("""
             INSERT INTO facturas (
                 cliente_id, total, descuento, itbis_total, 
-                metodo_pago, ncf, fecha_creacion, estado, tipo, turno_id
-            ) VALUES (%s, %s, %s, %s, %s, %s, NOW(), %s, %s, %s)
+                metodo_pago, fecha_vencimiento, ncf, fecha_creacion, estado, tipo, turno_id
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, NOW(), %s, %s, %s)
         """, (
             cliente_id,
             data['total'],
             data.get('descuento', 0),
             data['itbis_total'],
             data['metodo_pago'],
+            fecha_vencimiento,  # Nuevo campo
             ncf,
             'PENDIENTE',
             tipo_factura,
@@ -604,7 +833,6 @@ def crear_factura():
                     cliente_id,
                     data['metodo_pago'],
                 )
-                print("Paso por aqui")
             elif tipo_factura == 'compra':
                 # Sumar stock para compras
                 cursor.execute("""
@@ -621,45 +849,67 @@ def crear_factura():
                     factura_id,
                 )
 
-        # Commit inicial: factura (PENDIENTE) y detalles creados
-        conn.commit()
-
-        # 3. Procesar pago si es tarjeta (ahora después de crear la factura)
+        # 3. Procesar pago según método
         if data['metodo_pago'].lower() == 'tarjeta':
             resultado_pago = procesar_pago_verifone(data['total'])
             if not resultado_pago.get('success'):
-                # marcar factura como CANCELADA si falla el pago
-                try:
-                    cursor.execute("UPDATE facturas SET estado=%s WHERE id=%s", ('CANCELADA', factura_id))
-                    conn.commit()
-                except Exception:
-                    conn.rollback()
+                cursor.execute("UPDATE facturas SET estado=%s WHERE id=%s", ('CANCELADA', factura_id))
+                conn.commit()
                 return jsonify({
                     'success': False,
                     'error': 'Pago rechazado, Revise la conexion del equipo',
                     'mensaje': resultado_pago.get('mensaje', 'Transacción no aprobada')
                 }), 402
 
-            # Si el pago fue exitoso, actualizar factura como PAGADA y guardar código
+            # Si el pago fue exitoso
             codigo_autorizacion = resultado_pago.get('codigo_autorizacion', '')
             cursor.execute("""
                 UPDATE facturas 
                 SET estado=%s, codigo_autorizacion=%s 
                 WHERE id=%s
             """, ('PAGADA', codigo_autorizacion, factura_id))
-            conn.commit()
-        else:
-            # Para otros métodos marcamos como PAGADA
-            cursor.execute("UPDATE facturas SET estado=%s WHERE id=%s", ('PAGADA', factura_id))
-            conn.commit()
 
-        # 4. REGISTRAR MOVIMIENTO EN CAJA (NUEVO)
-        # Determinar tipo de movimiento
-        tipo_movimiento = 'gasto' if tipo_factura == 'compra' else 'venta'
-        descripcion = f"Factura #{factura_id} - {'Compra' if tipo_factura == 'compra' else 'Venta'}"
-        
-        # Registrar en tabla movimientos_caja
-        try:
+        elif data['metodo_pago'].lower() == 'credito':
+            # Actualizar estado a PENDIENTE
+            cursor.execute("UPDATE facturas SET estado=%s WHERE id=%s", ('PENDIENTE', factura_id))
+            
+            # Insertar en cuentas por pagar/cobrar
+            if tipo_factura == 'compra':
+                # Cuentas por pagar (compras a crédito)
+                cursor.execute("""
+                    INSERT INTO cuentas_por_pagar (
+                        proveedor_id, numero_factura, fecha_emision, 
+                        fecha_vencimiento, monto, estado, descripcion
+                    ) VALUES (%s, %s, CURDATE(), %s, %s, 'Pendiente', %s)
+                """, (
+                    cliente_id,
+                    ncf,
+                    fecha_vencimiento,  # Usar la misma fecha de vencimiento
+                    data['total'],
+                    f"Factura de compra #{factura_id}"
+                ))
+            else:
+                # Cuentas por cobrar (ventas a crédito)
+                cursor.execute("""
+                    INSERT INTO cuentas_por_cobrar (
+                        cliente_id, factura_id, monto_total, 
+                        fecha_emision, fecha_vencimiento, estado
+                    ) VALUES (%s, %s, %s, CURDATE(), %s, 'pendiente')
+                """, (
+                    cliente_id,
+                    factura_id,
+                    data['total'],
+                    fecha_vencimiento  # Usar la misma fecha de vencimiento
+                ))
+
+        else:  # Efectivo, transferencia, etc.
+            cursor.execute("UPDATE facturas SET estado=%s WHERE id=%s", ('PAGADA', factura_id))
+
+        # 4. REGISTRAR MOVIMIENTO EN CAJA (SOLO PARA MÉTODOS NO CRÉDITO)
+        if data['metodo_pago'].lower() != 'credito':
+            tipo_movimiento = 'gasto' if tipo_factura == 'compra' else 'venta'
+            descripcion = f"Factura #{factura_id} - {'Compra' if tipo_factura == 'compra' else 'Venta'}"
+            
             cursor.execute("""
                 INSERT INTO movimientos_caja (
                     turno_id, factura_id, tipo, metodo_pago, descripcion, monto
@@ -672,12 +922,11 @@ def crear_factura():
                 descripcion,
                 data['total']
             ))
-            conn.commit()
-        except Exception as e:
-            print(f"Error registrando movimiento en caja: {str(e)}")
-            # No romper el flujo por este error, solo registrar
 
-        # 5. Intentar imprimir ticket
+        # Confirmar toda la transacción
+        conn.commit()
+
+        # 5. Intentar imprimir ticket (fuera de la transacción)
         resultado_impresion = imprimir_ticket(factura_id)
         
         # 6. Preparar respuesta
@@ -694,24 +943,25 @@ def crear_factura():
         return jsonify(response), 201
 
     except Exception as e:
+        # Revertir transacción en caso de error
         conn.rollback()
         return jsonify({'success': False, 'error': str(e)}), 400
     finally:
+        # Restaurar modo autocommit y cerrar conexión
+        conn.autocommit = True
         cursor.close()
         conn.close()
-
-
 @bp.route('/api/facturas/<int:factura_id>/pdf', methods=['GET'])
 def descargar_factura_pdf(factura_id):
     """Endpoint para descargar factura en PDF"""
-    pdf_buffer = generar_factura_proveedor_pdf(factura_id)
+    pdf_buffer = generar_factura_pdf(factura_id)
     if not pdf_buffer:
         return jsonify({'success': False, 'error': 'No se pudo generar el PDF'}), 400
     
     return send_file(
         pdf_buffer,
         as_attachment=True,
-        download_name=f'factura_compra_{factura_id}.pdf',
+        download_name=f'factura_{factura_id}.pdf',
         mimetype='application/pdf'
     )
 

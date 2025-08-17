@@ -1,6 +1,6 @@
 # auth.py
 from functools import wraps
-from flask import redirect, session, url_for, flash
+from flask import flash, redirect, url_for, session
 
 def login_required(f):
     @wraps(f)
@@ -18,9 +18,15 @@ def solo_admin_required(f):
             flash('Debes iniciar sesión para acceder a esta página', 'warning')
             return redirect(url_for('login.login'))
 
-        if session.get('user_role') != 'admin':
+        # CORRECCIÓN: Usar 'rol' en lugar de 'user_role'
+        if session.get('rol') != 'admin':
             flash('Acceso permitido solo para administradores.', 'danger')
-            return redirect(url_for('home.home'))  # o la ruta que uses para usuarios normales
+            
+            # Redirigir a la página adecuada según el rol
+            if session.get('rol') == 'empleado':
+                return redirect(url_for('facturacion.facturacion'))
+            else:
+                return redirect(url_for('home.home'))
 
         return f(*args, **kwargs)
     return decorated_function

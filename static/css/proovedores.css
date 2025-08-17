@@ -1,4 +1,4 @@
-/* Variables y estilos base actualizados */
+/* Variables y estilos base */
 :root {
     --primary: #2c6fbb;
     --primary-light: #e8f0fe;
@@ -23,6 +23,7 @@
     --card-padding: 1.25rem;
 }
 
+/* Estilos base */
 * {
     box-sizing: border-box;
     margin: 0;
@@ -42,7 +43,7 @@ body {
     padding: 0 1rem;
 }
 
-/* Header simplificado */
+/* Header */
 .page-header {
     text-align: left;
     margin: 1.5rem 0;
@@ -90,7 +91,7 @@ body {
     color: var(--primary);
 }
 
-/* Botones más planos */
+/* Botones */
 .btn {
     padding: 0.6rem 1rem;
     border: none;
@@ -135,7 +136,7 @@ body {
     background-color: var(--gray-light);
 }
 
-/* Card styles - más planas y compactas */
+/* Cards */
 .card {
     background-color: white;
     border-radius: var(--radius);
@@ -155,7 +156,7 @@ body {
     border-bottom: 1px solid var(--border);
 }
 
-/* Table styles - más compacta */
+/* Tablas */
 .table-container {
     overflow-x: auto;
     border-radius: var(--radius);
@@ -191,7 +192,7 @@ tr:hover {
     background-color: rgba(0, 0, 0, 0.015);
 }
 
-/* Badges más planos */
+/* Badges */
 .status-badge {
     display: inline-block;
     padding: 0.25rem 0.75rem;
@@ -215,6 +216,7 @@ tr:hover {
     color: var(--warning);
 }
 
+/* Botones de acción */
 .action-buttons {
     display: flex;
     gap: 0.5rem;
@@ -240,7 +242,7 @@ tr:hover {
     color: white;
 }
 
-/* Search input más plano */
+/* Buscador */
 .search-container {
     display: flex;
     gap: 0.5rem;
@@ -277,7 +279,7 @@ tr:hover {
     box-shadow: 0 0 0 2px rgba(44, 111, 187, 0.1);
 }
 
-/* Stats */
+/* Estadísticas */
 .stats-container {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -320,7 +322,7 @@ tr:hover {
     font-size: 0.9rem;
 }
 
-/* Modal styles */
+/* Modales */
 .modal {
     position: fixed;
     top: 0;
@@ -401,7 +403,7 @@ tr:hover {
     padding: 1.25rem;
 }
 
-/* Form styles */
+/* Formularios */
 .form-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
@@ -482,7 +484,7 @@ tr:hover {
     margin: 0 0.5rem;
 }
 
-/* Pagination */
+/* Paginación */
 .pagination {
     display: flex;
     justify-content: center;
@@ -514,7 +516,7 @@ tr:hover {
     background-color: var(--gray-light);
 }
 
-/* Estado toggle */
+/* Toggle de estado */
 .switch-container {
     display: flex;
     align-items: center;
@@ -566,7 +568,7 @@ input:checked + .slider:before {
     transform: translateX(26px);
 }
 
-/* Responsive */
+/* Responsive para móviles */
 @media (max-width: 768px) {
     .content-header {
         flex-direction: column;
@@ -604,4 +606,97 @@ input:checked + .slider:before {
     .stats-container {
         grid-template-columns: 1fr;
     }
+}
+
+/* Estilos adicionales específicos para proveedores */
+#gestor-proveedores {
+    padding-bottom: 2rem;
+}
+
+.provider-info {
+    background-color: var(--gray-light);
+    padding: 1rem;
+    border-radius: var(--radius);
+    margin-bottom: 1rem;
+}
+
+#history-table-body tr {
+    transition: var(--transition);
+}
+
+#history-table-body tr:hover {
+    background-color: var(--gray-light);
+}
+
+/* Animaciones de carga */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.card, .stat-card {
+    animation: fadeIn 0.3s ease-out;
+}
+
+/* Efectos para elementos interactivos */
+.action-btn.edit:hover {
+    background-color: var(--warning);
+    color: white;
+}
+
+.action-btn.delete:hover {
+    background-color: var(--danger);
+    color: white;
+}
+
+.action-btn.history:hover {
+    background-color: var(--info);
+    color: white;
+}
+
+/* Adaptaciones para tablas en móviles */
+@media (max-width: 480px) {
+    th, td {
+        padding: 0.5rem;
+        font-size: 0.8rem;
+    }
+    
+    .action-buttons {
+        flex-wrap: wrap;
+    }
+    
+    .action-btn {
+        width: 28px;
+        height: 28px;
+        font-size: 0.8rem;
+    }
+    
+    .stat-icon {
+        width: 40px;
+        height: 40px;
+        font-size: 1.2rem;
+    }
+    
+    .stat-content h3 {
+        font-size: 1.2rem;
+    }
+}
+
+/* Scroll personalizado */
+.modal-content::-webkit-scrollbar {
+    width: 8px;
+}
+
+.modal-content::-webkit-scrollbar-track {
+    background: var(--gray-light);
+    border-radius: var(--radius);
+}
+
+.modal-content::-webkit-scrollbar-thumb {
+    background: var(--primary);
+    border-radius: var(--radius);
+}
+
+.hidden {
+    display: none;
 }
