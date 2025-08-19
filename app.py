@@ -24,11 +24,25 @@ from routes import verifone
 from routes import impresora
 from routes import empresa
 from routes import caja
+from flask_mail import Mail
 
 
 
 app = Flask(__name__)
 app.secret_key = "jul"
+
+# Configuración de Flask-Mail
+app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+app.config['MAIL_PORT'] = 587
+app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_USERNAME'] = 'prestamosdelgadof@gmail.com'
+app.config['MAIL_PASSWORD'] = 'bzyz uzha idyj uuvb'
+app.config['MAIL_DEFAULT_SENDER'] = 'prestamosdelgadof@gmail.com'
+
+
+
+# Inicializar Flask-Mail
+mail = Mail(app)
 
 
 app.register_blueprint(clientes.bp)

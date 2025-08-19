@@ -1,7 +1,11 @@
-from flask import Blueprint, render_template, jsonify, request, session
+import os
 import datetime
+from threading import Thread
+from flask import Blueprint, render_template, jsonify, request, session, current_app, Response
+import pdfkit
 from conexion import conectar
 from utils import login_required, solo_admin_required
+from flask_mail import Message
 
 bp = Blueprint('caja', __name__)
 
@@ -42,6 +46,101 @@ def obtener_estadisticas_facturacion_turno(turno_id):
             if conn: conn.close()
         except:
             pass
+
+def generar_pdf_reporte(turno_id, turno_data, datos_cierre, movimientos):
+    """Genera el PDF del reporte de cierre"""
+    try:
+        # Renderizar plantilla HTML con los datos
+        html = render_template(
+            'reporte_caja.html',
+            turno_id=turno_id,
+            turno=turno_data,  # Pasamos los datos del turno
+            datos_cierre=datos_cierre,
+            movimientos=movimientos,
+            now=datetime.datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+        )
+        
+        # Configurar opciones para PDF
+        options = {
+            'page-size': 'Letter',
+            'margin-top': '0.5in',
+            'margin-right': '0.5in',
+            'margin-bottom': '0.5in',
+            'margin-left': '0.5in',
+            'encoding': "UTF-8",
+            'no-outline': None
+        }
+        
+        # Primero intentar con la ruta de Linux
+        try:
+            config = pdfkit.configuration(wkhtmltopdf='/usr/bin/wkhtmltopdf')
+            current_app.logger.info("Usando ruta de Linux para wkhtmltopdf")
+        except OSError:
+            # Si falla, usar la ruta de Windows
+            try:
+                config = pdfkit.configuration(
+                    wkhtmltopdf=r"C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe"
+                )
+                current_app.logger.info("Usando ruta de Windows para wkhtmltopdf")
+            except OSError as e:
+                current_app.logger.error("No se pudo encontrar wkhtmltopdf en ninguna ruta conocida")
+                raise e
+        
+        # Generar PDF
+        pdf = pdfkit.from_string(
+            html, 
+            False, 
+            options=options,
+            configuration=config
+        )
+        
+        return pdf
+        
+    except Exception as e:
+        current_app.logger.error(f"Error generando PDF: {str(e)}")
+        return None
+
+def enviar_reporte_por_correo(turno_id, pdf_content, destinatarios):
+    """Envía el reporte por correo electrónico"""
+    try:
+        # Validar destinatarios
+        if not destinatarios or not isinstance(destinatarios, list):
+            current_app.logger.error("Lista de destinatarios inválida")
+            return False
+            
+        # Filtrar solo emails válidos
+        valid_recipients = [email for email in destinatarios 
+                           if isinstance(email, str) and '@' in email]
+        
+        if not valid_recipients:
+            current_app.logger.error("No hay destinatarios válidos")
+            return False
+        
+        # Obtener la instancia de mail
+        mail = current_app.extensions.get('mail')
+        
+        if not mail:
+            current_app.logger.error("Mail extension not initialized")
+            return False
+            
+        msg = Message(
+            subject=f"Reporte de Cierre de Caja - Turno #{turno_id}",
+            recipients=valid_recipients,
+            body=f"Adjunto reporte de cierre de caja para el turno #{turno_id}"
+        )
+        
+        msg.attach(
+            f"reporte_cierre_{turno_id}.pdf", 
+            "application/pdf", 
+            pdf_content
+        )
+        
+        mail.send(msg)
+        current_app.logger.info(f"Correo enviado a {valid_recipients}")
+        return True
+    except Exception as e:
+        current_app.logger.error(f"Error enviando correo: {str(e)}")
+        return False
 
 @bp.route('/caja')
 @login_required
@@ -369,9 +468,80 @@ def cerrar_turno():
         """, (observaciones, monto_efectivo, monto_tarjeta, monto_total, turno_id))
         conn.commit()
         
-        # DEVOLVER LAS ESTADÍSTICAS EN LA RESPUESTA
+        # Obtener datos para el reporte
+        # Datos básicos del turno (ahora cerrado)
+        cursor.execute("""
+            SELECT * FROM caja_estado WHERE id = %s
+        """, (turno_id,))
+        turno_cerrado = cursor.fetchone()
+        
+        if not turno_cerrado:
+            current_app.logger.error(f"No se encontraron datos para el turno {turno_id}")
+            return jsonify({
+                'success': False, 
+                'error': 'No se encontraron datos del turno'
+            }), 500
+        
+        # Obtener movimientos
+        cursor.execute("""
+            SELECT * FROM movimientos_caja 
+            WHERE turno_id = %s
+            ORDER BY fecha DESC
+        """, (turno_id,))
+        movimientos = cursor.fetchall()
+        
+        # Preparar datos para el reporte
+        datos_cierre = {
+            'observaciones': turno_cerrado.get('observaciones', ''),
+            'monto_efectivo': float(turno_cerrado.get('monto_final_efectivo', 0)),
+            'monto_tarjeta': float(turno_cerrado.get('monto_final_tarjeta', 0)),
+            'monto_total': float(turno_cerrado.get('monto_final_total', 0)),
+            'estadisticas': estadisticas,
+            'cajero': turno_cerrado.get('cajero', '')
+        }
+        
+        # Generar PDF - pasamos turno_cerrado como turno_data
+        pdf_content = generar_pdf_reporte(turno_id, turno_cerrado, datos_cierre, movimientos)
+        
+        if not pdf_content:
+            current_app.logger.error("No se pudo generar el PDF del reporte")
+        
+        # Enviar por correo en segundo plano si se generó el PDF
+        if pdf_content:
+            # Crear lista de destinatarios segura
+            destinatarios = ['wederick02@gmail.com']  # Siempre enviar al admin
+            
+            # Obtener email del cajero si existe y es válido
+            email_cajero = session.get('email')
+            if email_cajero and isinstance(email_cajero, str) and '@' in email_cajero:
+                destinatarios.append(email_cajero)
+            else:
+                current_app.logger.warning(f"Email de cajero no válido: {email_cajero}")
+            
+            # Solo enviar si hay al menos un destinatario válido
+            if destinatarios:
+                # Función para ejecutar en segundo plano
+                def async_send_email(app, turno_id, pdf, recipients):
+                    with app.app_context():
+                        enviar_reporte_por_correo(turno_id, pdf, recipients)
+                
+                Thread(
+                    target=async_send_email,
+                    args=(
+                        current_app._get_current_object(),
+                        turno_id,
+                        pdf_content,
+                        destinatarios
+                    )
+                ).start()
+            else:
+                current_app.logger.error("No hay destinatarios válidos para enviar el correo")
+        
+        # Devolver respuesta incluyendo el PDF para descarga inmediata (en hexadecimal)
         return jsonify({
             'success': True,
+            'turno_id': turno_id,
+            'pdf': pdf_content.hex() if pdf_content else None,  # Convertir bytes a hexadecimal para JSON
             'estadisticas': {
                 'total_facturas': estadisticas['total_facturas'],
                 'total_facturado': float(estadisticas['total_facturado']),
@@ -468,3 +638,66 @@ def registrar_movimiento():
             if conn: conn.close()
         except:
             pass
+
+@bp.route('/api/caja/reporte-pdf/<int:turno_id>', methods=['GET'])
+def descargar_reporte_pdf(turno_id):
+    """Endpoint para descargar el reporte PDF de un turno cerrado"""
+    try:
+        # Obtener datos del turno
+        conn = conectar()
+        cursor = conn.cursor(dictionary=True)
+        
+        # Obtener datos básicos del turno
+        cursor.execute("""
+            SELECT * FROM caja_estado WHERE id = %s
+        """, (turno_id,))
+        turno = cursor.fetchone()
+        
+        if not turno:
+            return jsonify({'error': 'Turno no encontrado'}), 404
+        
+        # Obtener estadísticas
+        estadisticas = obtener_estadisticas_facturacion_turno(turno_id)
+        
+        # Obtener movimientos
+        cursor.execute("""
+            SELECT * FROM movimientos_caja 
+            WHERE turno_id = %s
+            ORDER BY fecha DESC
+        """, (turno_id,))
+        movimientos = cursor.fetchall()
+        
+        # Preparar datos para el reporte
+        datos_cierre = {
+            'observaciones': turno.get('observaciones', ''),
+            'monto_efectivo': float(turno.get('monto_final_efectivo', 0)),
+            'monto_tarjeta': float(turno.get('monto_final_tarjeta', 0)),
+            'monto_total': float(turno.get('monto_final_total', 0)),
+            'estadisticas': estadisticas,
+            'cajero': turno.get('cajero', '')
+        }
+        
+        # Generar PDF - pasamos turno como turno_data
+        pdf_content = generar_pdf_reporte(turno_id, turno, datos_cierre, movimientos)
+        
+        if not pdf_content:
+            return jsonify({'error': 'Error generando reporte'}), 500
+        
+        # Devolver como respuesta descargable
+        return Response(
+            pdf_content,
+            mimetype='application/pdf',
+            headers={
+                'Content-Disposition': f'attachment; filename=reporte_cierre_{turno_id}.pdf'
+            }
+        )
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    finally:
+        try:
+            if cursor: cursor.close()
+        except: pass
+        try:
+            if conn: conn.close()
+        except: pass

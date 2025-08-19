@@ -7,6 +7,7 @@ import datetime
 import pdfkit
 import io
 import os
+import threading
 import requests  # Para comunicación con el agente local
 from utils import login_required, solo_admin_required
 
@@ -16,6 +17,9 @@ bp = Blueprint('facturacion', __name__)
 # Configuración del agente de impresión
 AGENTE_IMPRESION_URL = "http://localhost:5001/print"
 TOKEN_AGENTE = "november" 
+ncf_lock = threading.Lock()
+ncf_current_date = None
+ncf_sequence_counter = 0
 
 def insertar_ventas_desde_facturas(cursor, producto_id, cantidad, cliente_id, metodo_pago):
     """
@@ -238,12 +242,45 @@ def imprimir_ticket(factura_id):
     except Exception as e:
         return {'success': False, 'error': f"Error general: {str(e)}"}
 
-def generar_ncf():
-    """Genera un NCF válido según normativa DGII"""
-    prefijo = "B01"  # Bienes normalizados
-    fecha = datetime.datetime.now().strftime("%y%m%d")
-    secuencia = ''.join(random.choices(string.digits, k=5))
-    return f"{prefijo}{fecha}{secuencia}"
+def cliente_tiene_rnc(cliente_id):
+    """Verifica si un cliente tiene RNC válido registrado"""
+    conn = conectar()
+    cursor = conn.cursor(dictionary=True)
+    try:
+        cursor.execute("SELECT rnc FROM clientes WHERE id = %s", (cliente_id,))
+        cliente = cursor.fetchone()
+        if cliente and cliente.get('rnc'):
+            # Verificar que el RNC no esté vacío ni sea nulo
+            rnc = cliente['rnc'].strip()
+            return rnc != '' and rnc.lower() != 'null' and rnc != '0'
+        return False
+    except Exception as e:
+        print(f"Error al verificar RNC: {str(e)}")
+        return False
+    finally:
+        cursor.close()
+        conn.close()
+
+def generar_ncf(tipo_ncf="B02"):
+    """Genera un NCF válido según normativa DGII con secuencia incremental diaria"""
+    global ncf_current_date, ncf_sequence_counter
+    
+    fecha_actual = datetime.datetime.now().strftime("%y%m%d")
+    
+    with ncf_lock:
+        # Reiniciar contador si es un nuevo día
+        if ncf_current_date != fecha_actual:
+            ncf_current_date = fecha_actual
+            ncf_sequence_counter = 0
+        
+        # Incrementar contador y formatear a 10 dígitos (normativa actual)
+        ncf_sequence_counter += 1
+        if ncf_sequence_counter > 9999999999:
+            raise OverflowError("Límite diario de comprobantes excedido (9,999,999,999)")
+        
+        secuencia = f"{ncf_sequence_counter:010d}"
+    
+    return f"{tipo_ncf}{fecha_actual}{secuencia}"
 
 def procesar_pago_verifone(monto):
     """Procesa el pago a través del dispositivo Verifone"""
@@ -609,7 +646,9 @@ def generar_factura_pdf(factura_id):
 @login_required
 def facturacion():
     config_empresa = obtener_configuracion_empresa()
-    return render_template('facturacion.html', empresa=config_empresa)
+    rol = session.get('rol', 'empleado')  # si no existe, que sea empleado por defecto
+    
+    return render_template('facturacion.html', empresa=config_empresa, rol=rol)
 
 @bp.route('/api/productos', methods=['GET'])
 def buscar_productos():
@@ -760,6 +799,17 @@ def crear_factura():
                 'error': 'cliente_id debe ser un número entero o "cf" para consumidor final'
             }), 400
 
+    # DETERMINAR TIPO DE NCF SEGÚN OPERACIÓN Y CLIENTE
+    if es_proveedor:
+        # COMPRAS A PROVEEDORES - usar B01
+        tipo_ncf = "B01"
+    else:
+        # VENTAS A CLIENTES
+        if data['cliente_id'] == 'cf' or not cliente_tiene_rnc(cliente_id):
+            tipo_ncf = "B02"  # Consumidor final
+        else:
+            tipo_ncf = "B01"  # Empresa con RNC
+
     # Inicializar variables para el pago
     codigo_autorizacion = ''
 
@@ -770,7 +820,7 @@ def crear_factura():
         conn.autocommit = False
 
         # 1. Insertar encabezado de factura en estado PENDIENTE y reservar NCF
-        ncf = generar_ncf()
+        ncf = generar_ncf(tipo_ncf)  # GENERAR NCF CON TIPO CORRECTO
         
         # PREPARAR FECHA DE VENCIMIENTO (solo para créditos)
         fecha_vencimiento = data.get('fecha_vencimiento') if data['metodo_pago'].lower() == 'credito' else None
@@ -951,6 +1001,7 @@ def crear_factura():
         conn.autocommit = True
         cursor.close()
         conn.close()
+
 @bp.route('/api/facturas/<int:factura_id>/pdf', methods=['GET'])
 def descargar_factura_pdf(factura_id):
     """Endpoint para descargar factura en PDF"""

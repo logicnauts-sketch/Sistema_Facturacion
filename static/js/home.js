@@ -282,31 +282,50 @@ document.addEventListener('click', (e) => {
 })();
 
 // Función para actualizar datos del dashboard
+// Función para actualizar datos del dashboard
 function updateDashboardData() {
+    // Verificar si estamos en la página de dashboard
+    const isDashboardPage = window.location.pathname === '/home' || 
+                            window.location.pathname === '/dashboard' || 
+                            window.location.pathname === '/';
+    
+    if (!isDashboardPage) return;  // Salir si no estamos en el dashboard
+
     fetch('/api/dashboard-data')
         .then(response => response.json())
         .then(data => {
-            // Actualizar proveedores
-            document.getElementById('totalProveedores').textContent = data.total_proveedores;
+            // Actualizar proveedores (con verificación)
+            const totalProveedores = document.getElementById('totalProveedores');
+            if (totalProveedores) {
+                totalProveedores.textContent = data.total_proveedores;
+            }
             
-            // Actualizar ingresos
-            document.getElementById('totalIngresos').textContent = 
-                '$' + data.total_ingresos.toLocaleString('es-ES', {minimumFractionDigits: 2});
+            // Actualizar ingresos (con verificación)
+            const totalIngresos = document.getElementById('totalIngresos');
+            if (totalIngresos) {
+                totalIngresos.textContent = 
+                    '$' + data.total_ingresos.toLocaleString('es-ES', {minimumFractionDigits: 2});
+            }
             
-            // Actualizar pagos pendientes
-            document.getElementById('cuentasPendientes').textContent = data.cuentas_pendientes;
+            // Actualizar pagos pendientes (con verificación)
+            const cuentasPendientes = document.getElementById('cuentasPendientes');
+            if (cuentasPendientes) {
+                cuentasPendientes.textContent = data.cuentas_pendientes;
+            }
             
-            // Actualizar vencidas
+            // Actualizar vencidas (con verificación)
             const vencidasElement = document.getElementById('cuentasVencidas');
-            vencidasElement.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${data.cuentas_vencidas} vencidas`;
-            
-            // Cambiar clase según cantidad de vencidas
-            if (data.cuentas_vencidas > 0) {
-                vencidasElement.classList.add('negative');
-                vencidasElement.classList.remove('positive');
-            } else {
-                vencidasElement.classList.add('positive');
-                vencidasElement.classList.remove('negative');
+            if (vencidasElement) {
+                vencidasElement.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${data.cuentas_vencidas} vencidas`;
+                
+                // Cambiar clase según cantidad de vencidas
+                if (data.cuentas_vencidas > 0) {
+                    vencidasElement.classList.add('negative');
+                    vencidasElement.classList.remove('positive');
+                } else {
+                    vencidasElement.classList.add('positive');
+                    vencidasElement.classList.remove('negative');
+                }
             }
         })
         .catch(error => console.error('Error al actualizar datos:', error));
@@ -317,3 +336,134 @@ setInterval(updateDashboardData, 300000);
 
 // Ejecutar al cargar la página
 document.addEventListener('DOMContentLoaded', updateDashboardData);
+
+// Gráfico de ingresos
+document.addEventListener('DOMContentLoaded', () => {
+    const chartContainer = document.getElementById('revenueChart');
+    const yAxisContainer = document.getElementById('yAxis');
+    const chartBtns = document.querySelectorAll('.chart-btn');
+    const chartTitle = document.querySelector('.chart-title');
+    
+    // Función para renderizar el gráfico
+    function renderChart(data, rangeType) {
+        if (!chartContainer) return;
+        chartContainer.innerHTML = '';
+        
+        // Actualizar título según el rango
+        if (chartTitle) {
+            if (rangeType === 'month') chartTitle.textContent = 'Ingresos Mensuales';
+            else if (rangeType === 'quarter') chartTitle.textContent = 'Ingresos Trimestrales';
+            else if (rangeType === 'year') chartTitle.textContent = 'Ingresos Anuales';
+        }
+        
+        // Calcular el valor máximo
+        const amounts = data.map(item => item.amount);
+        const maxValue = Math.max(...amounts, 1000); // Mínimo 1000 para evitar división por cero
+        
+        // Generar etiquetas del eje Y (5 valores)
+        if (yAxisContainer) {
+            yAxisContainer.innerHTML = '';
+            const steps = 5;
+            for (let i = steps; i >= 0; i--) {
+                const value = (maxValue / steps) * i;
+                const axisLabel = document.createElement('div');
+                
+                // Formatear según el valor
+                if (maxValue > 1000000) {
+                    axisLabel.textContent = `$${(value / 1000000).toFixed(1)}M`;
+                } else if (maxValue > 10000) {
+                    axisLabel.textContent = `$${(value / 1000).toFixed(0)}k`;
+                } else {
+                    axisLabel.textContent = `$${value.toFixed(0)}`;
+                }
+                
+                axisLabel.style.flex = '1';
+                axisLabel.style.display = 'flex';
+                axisLabel.style.alignItems = 'center';
+                axisLabel.style.justifyContent = 'flex-end';
+                axisLabel.style.paddingRight = '5px';
+                yAxisContainer.appendChild(axisLabel);
+            }
+        }
+        
+        // Crear las barras
+        data.forEach(item => {
+            const barHeight = (item.amount / maxValue) * 100;
+            const bar = document.createElement('div');
+            bar.className = 'bar';
+            bar.style.setProperty('--target-height', `${barHeight}%`);
+            bar.style.height = '0';
+            bar.setAttribute('data-period', item.period);
+            bar.setAttribute('data-amount', item.amount);
+            
+            const barLabel = document.createElement('div');
+            barLabel.className = 'bar-label';
+            barLabel.textContent = item.period;
+            
+            const tooltip = document.createElement('div');
+            tooltip.className = 'bar-tooltip';
+            
+            // Formatear el monto según el valor
+            let formattedAmount;
+            if (item.amount > 1000000) {
+                formattedAmount = `$${(item.amount / 1000000).toFixed(2)}M`;
+            } else if (item.amount > 10000) {
+                formattedAmount = `$${(item.amount / 1000).toFixed(1)}k`;
+            } else {
+                formattedAmount = `$${item.amount.toLocaleString('es-ES', { minimumFractionDigits: 2 })}`;
+            }
+            
+            tooltip.textContent = `${item.period}: ${formattedAmount}`;
+            
+            bar.appendChild(barLabel);
+            bar.appendChild(tooltip);
+            chartContainer.appendChild(bar);
+            
+            // Animar la barra después de un pequeño retraso
+            setTimeout(() => {
+                bar.style.animation = `barRise 0.8s cubic-bezier(0.22, 0.61, 0.36, 1) forwards`;
+                bar.style.height = 'var(--target-height)';
+            }, 100);
+        });
+    }
+
+    // Función para cargar datos
+    function loadData(range) {
+        fetch(`/api/revenue-data?range=${range}`)
+            .then(response => {
+                if (!response.ok) throw new Error('Error en la respuesta del servidor');
+                return response.json();
+            })
+            .then(responseData => {
+                if (chartContainer && responseData.data) {
+                    renderChart(responseData.data, responseData.range);
+                }
+            })
+            .catch(error => {
+                console.error('Error al obtener datos de ingresos:', error);
+                if (chartContainer) {
+                    chartContainer.innerHTML = `
+                        <div class="chart-error">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <p>No se pudieron cargar los datos</p>
+                        </div>
+                    `;
+                }
+            });
+    }
+
+    // Cargar datos iniciales
+    loadData('month');
+
+    // Cambiar rango de tiempo
+    if (chartBtns && chartBtns.length) {
+        chartBtns.forEach(btn => {
+            btn.addEventListener('click', function() {
+                chartBtns.forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                const range = this.dataset.range || 'month';
+                loadData(range);
+            });
+        });
+    }
+});

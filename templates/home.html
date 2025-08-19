@@ -346,6 +346,7 @@
                         </div>
                     </div> -->
 
+
                     <div class="chart-container fade-in" style="animation-delay: 0.4s;">
                         <div class="chart-header">
                             <h3 class="chart-title">Ingresos Mensuales</h3>
@@ -355,55 +356,9 @@
                                 <button class="chart-btn" data-range="year">Anual</button>
                             </div>
                         </div>
-                        <div class="chart" id="revenueChart">
-                            <div class="bar" style="height: 30%;" data-month="Enero" data-amount="12500">
-                                <div class="bar-label">Ene</div>
-                                <div class="bar-tooltip">Enero: $12,500</div>
-                            </div>
-                            <div class="bar" style="height: 45%;" data-month="Febrero" data-amount="18750">
-                                <div class="bar-label">Feb</div>
-                                <div class="bar-tooltip">Febrero: $18,750</div>
-                            </div>
-                            <div class="bar" style="height: 60%;" data-month="Marzo" data-amount="25000">
-                                <div class="bar-label">Mar</div>
-                                <div class="bar-tooltip">Marzo: $25,000</div>
-                            </div>
-                            <div class="bar" style="height: 80%;" data-month="Abril" data-amount="33300">
-                                <div class="bar-label">Abr</div>
-                                <div class="bar-tooltip">Abril: $33,300</div>
-                            </div>
-                            <div class="bar" style="height: 65%;" data-month="Mayo" data-amount="27100">
-                                <div class="bar-label">May</div>
-                                <div class="bar-tooltip">Mayo: $27,100</div>
-                            </div>
-                            <div class="bar" style="height: 75%;" data-month="Junio" data-amount="31250">
-                                <div class="bar-label">Jun</div>
-                                <div class="bar-tooltip">Junio: $31,250</div>
-                            </div>
-                            <div class="bar" style="height: 90%;" data-month="Julio" data-amount="37500">
-                                <div class="bar-label">Jul</div>
-                                <div class="bar-tooltip">Julio: $37,500</div>
-                            </div>
-                            <div class="bar" style="height: 100%;" data-month="Agosto" data-amount="41670">
-                                <div class="bar-label">Ago</div>
-                                <div class="bar-tooltip">Agosto: $41,670</div>
-                            </div>
-                            <div class="bar" style="height: 85%;" data-month="Septiembre" data-amount="35420">
-                                <div class="bar-label">Sep</div>
-                                <div class="bar-tooltip">Septiembre: $35,420</div>
-                            </div>
-                            <div class="bar" style="height: 95%;" data-month="Octubre" data-amount="39580">
-                                <div class="bar-label">Oct</div>
-                                <div class="bar-tooltip">Octubre: $39,580</div>
-                            </div>
-                            <div class="bar" style="height: 70%;" data-month="Noviembre" data-amount="29170">
-                                <div class="bar-label">Nov</div>
-                                <div class="bar-tooltip">Noviembre: $29,170</div>
-                            </div>
-                            <div class="bar" style="height: 60%;" data-month="Diciembre" data-amount="25000">
-                                <div class="bar-label">Dic</div>
-                                <div class="bar-tooltip">Diciembre: $25,000</div>
-                            </div>
+                        <div class="chart-wrapper">
+                            <div class="chart-y-axis" id="yAxis"></div>
+                            <div class="chart" id="revenueChart"></div>
                         </div>
                     </div>
 
@@ -473,9 +428,6 @@
 
     <script src="/static/js/home.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/notyf@3/notyf.min.js"></script>
-<script>
-
-</script>
 
     {% block scripts %}
     {% endblock %}

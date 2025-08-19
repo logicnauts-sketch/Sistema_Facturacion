@@ -1,3 +1,7 @@
+
+
+
+
 {% extends "home.html" %}
 
 {% block title %}Configuración de Empresa{% endblock %}
@@ -174,8 +178,13 @@
                             <label for="color_principal">
                                 <i class="fas fa-palette"></i> Color Principal
                             </label>
-                            <input type="color" id="color_principal" name="color_principal" class="form-control" value="#3498db" style="height: 50px;">
+                            <input type="color" id="color_principal" name="color_principal" class="form-control" value="#4361ee" style="height: 50px;">
                         </div>
+                        
+                        <!-- Botón Ver Factura -->
+                        <button type="button" class="btn-preview" id="openInvoicePreview">
+                            <i class="fas fa-file-invoice"></i> Ver Factura de Ejemplo
+                        </button>
                     </div>
                 </form>
             </div>
@@ -190,6 +199,177 @@
             </div>
         </div>
     </div>
+    
+    <!-- Modal de Vista Previa de Facturas -->
+    <div class="modal" id="invoicePreviewModal">
+        <div class="modal-content invoice-preview-modal">
+            <div class="modal-header">
+                <h2><i class="fas fa-file-invoice"></i> Vista Previa de Factura</h2>
+                <button class="close-modal" id="closeInvoiceModal">&times;</button>
+            </div>
+            
+            <div class="invoice-tabs">
+                <button class="invoice-tab active" data-type="a4">Factura A4</button>
+                <button class="invoice-tab" data-type="termica">Factura Térmica</button>
+            </div>
+            
+            <div class="invoice-preview-content">
+                <div class="invoice-preview-container">
+                    <!-- Vista previa de factura A4 -->
+                    <div class="invoice-preview active" id="a4-invoice">
+                        <div class="invoice-a4">
+                            <div class="invoice-header">
+            <div class="invoice-logo">
+            <img id="companyLogoImg2" alt="Logo de la empresa">
+            <i class="fas fa-building"></i>
+            </div>
+                                <div class="invoice-company-info">
+                                    <div class="invoice-title" id="preview-company-name">Tech Solutions Inc.</div>
+                                    <div id="preview-company-info">
+                                        <p>RNC: <span id="preview-rnc">123-456789-1</span></p>
+                                        <p id="preview-address">Av. Winston Churchill, Santo Domingo</p>
+                                        <p>Tel: <span id="preview-phone">809-555-1234</span></p>
+                                        <p>Email: <span id="preview-email">info@techsolutions.com</span></p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="invoice-details">
+                                <div class="invoice-client">
+                                    <h3>Cliente:</h3>
+                                    <p>Empresa XYZ S.R.L.</p>
+                                    <p>RNC: 987-654321-0</p>
+                                    <p>Calle Principal #123, Santo Domingo</p>
+                                </div>
+                                <div class="invoice-meta">
+                                    <p><strong>Factura #:</strong> F-2023-001</p>
+                                    <p><strong>Fecha:</strong> 18 Ago 2023</p>
+                                    <p><strong>Vencimiento:</strong> 18 Sep 2023</p>
+                                </div>
+                            </div>
+                            
+                            <table class="invoice-table">
+                                <thead>
+                                    <tr>
+                                        <th>Descripción</th>
+                                        <th>Cantidad</th>
+                                        <th>Precio</th>
+                                        <th>Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>Desarrollo de Software</td>
+                                        <td>1</td>
+                                        <td>$1,200.00</td>
+                                        <td>$1,200.00</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Consultoría IT (20 horas)</td>
+                                        <td>20</td>
+                                        <td>$50.00</td>
+                                        <td>$1,000.00</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Mantenimiento Mensual</td>
+                                        <td>1</td>
+                                        <td>$350.00</td>
+                                        <td>$350.00</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            
+                            <div class="invoice-totals">
+                                <div>
+                                    <div class="invoice-total-row">
+                                        <span>Subtotal:</span>
+                                        <span>$2,550.00</span>
+                                    </div>
+                                    <div class="invoice-total-row">
+                                        <span>ITBIS (18%):</span>
+                                        <span>$459.00</span>
+                                    </div>
+                                    <div class="invoice-total-row total">
+                                        <span>Total:</span>
+                                        <span>$3,009.00</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="invoice-footer">
+                                <p id="preview-legal-message">Todos los derechos reservados. Prohibida la reproducción total o parcial sin autorización.</p>
+                                <p>Gracias por su preferencia</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Vista previa de factura térmica -->
+                    <div class="invoice-preview" id="termica-invoice">
+                        <div class="invoice-termica">
+                        <div class="termica-header">
+                        <img id="termicaCompanyLogo" alt="Logo de la empresa"> <!-- Nuevo elemento -->
+                        <div class="termica-title" id="termica-company-name">Tech Solutions Inc.</div>
+                        <div>RNC: <span id="termica-rnc">123-456789-1</span></div>
+                        </div>
+                            
+                            <div class="termica-details">
+                                <div><strong>FACTURA #:</strong> F-2023-001</div>
+                                <div><strong>FECHA:</strong> 18/08/2023</div>
+                                <div><strong>CLIENTE:</strong> Empresa XYZ S.R.L.</div>
+                                <div><strong>RNC CLIENTE:</strong> 987-654321-0</div>
+                            </div>
+                            
+                            <table class="termica-table">
+                                <tr>
+                                    <td>Desarrollo Software</td>
+                                    <td>1 x $1,200.00</td>
+                                    <td>$1,200.00</td>
+                                </tr>
+                                <tr>
+                                    <td>Consultoría IT</td>
+                                    <td>20 x $50.00</td>
+                                    <td>$1,000.00</td>
+                                </tr>
+                                <tr>
+                                    <td>Mantenimiento</td>
+                                    <td>1 x $350.00</td>
+                                    <td>$350.00</td>
+                                </tr>
+                            </table>
+                            
+                            <div class="termica-totals">
+                                <div class="termica-total-row">
+                                    <span>Subtotal:</span>
+                                    <span>$2,550.00</span>
+                                </div>
+                                <div class="termica-total-row">
+                                    <span>ITBIS (18%):</span>
+                                    <span>$459.00</span>
+                                </div>
+                                <div class="termica-total-row">
+                                    <span><strong>TOTAL:</strong></span>
+                                    <span><strong>$3,009.00</strong></span>
+                                </div>
+                            </div>
+                            
+                            <div class="termica-footer">
+                                <div id="termica-legal-message">Todos los derechos reservados</div>
+                                <div>Gracias por su preferencia</div>
+                                <div>Tel: 809-555-1234</div>
+                                <div>www.techsolutions.com</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button class="btn btn-cancel" id="closeInvoicePreview">
+                    <i class="fas fa-times"></i> Cerrar
+                </button>
+            </div>
+        </div>
+    </div>
 
     <!-- Toast notification -->
     <div class="toast" id="toast">
@@ -200,4 +380,5 @@
 
 {% block scripts %}
 <script src="/static/js/empresa.js"></script>
+
 {% endblock %}

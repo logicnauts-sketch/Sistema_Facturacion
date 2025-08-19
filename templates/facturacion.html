@@ -110,7 +110,7 @@
                     </div>
 
                     <!-- Selección de pago -->
-                    <div class="payment-methods">
+                    <div class="payment-methods"> 
                         <div class="card-header">
                             <h2 class="card-title">Método de Pago</h2>
                         </div>
@@ -417,4 +417,15 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/notyf@3/notyf.min.js"></script>
     <script src="/static/js/facturacion.js"></script>
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const userRole = "{{ rol }}";  // viene del backend
+
+        if (userRole !== "admin") {
+            document.querySelectorAll('[data-method="tarjeta"], [data-method="transferencia"], [data-method="credito"]')
+                .forEach(el => el.style.display = "none");
+        }
+    });
+    </script>
+
 {% endblock %}

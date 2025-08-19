@@ -109,6 +109,7 @@ def obtener_empresa():
         if conn:
             conn.close()
 
+
 @bp.route('/guardar', methods=['POST'])
 def guardar_empresa():
     """Actualiza los datos de la empresa incluyendo logo"""
