@@ -144,3 +144,24 @@ def eliminar_impresora(id):
     finally:
         cur.close()
         conn.close()
+
+@bp.route('/api/<int:id>/toggle-active', methods=['POST'])
+def toggle_active_printer(id):
+    conn = conectar()
+    cur = conn.cursor()
+    
+    try:
+        # Primero desactivar todas las impresoras
+        cur.execute("UPDATE printers SET activa = FALSE")
+        
+        # Luego activar la impresora seleccionada
+        cur.execute("UPDATE printers SET activa = TRUE WHERE id = %s", (id,))
+        conn.commit()
+        
+        return jsonify({"success": True}), 200
+    except Exception as e:
+        conn.rollback()
+        return jsonify({"success": False, "message": str(e)}), 400
+    finally:
+        cur.close()
+        conn.close()

@@ -1,0 +1,27 @@
+** Mini Market **
+RNC: 1-01-12345-9
+Tel: (809) 555-9999
+Calle Principal #100
+----------------------------------------
+FACTURA DE VENTA
+FACTURA: B022510030000000003
+FECHA: 03/10/2025 17:07:14
+CLIENTE: Consumidor Final
+DOC: 000-000000-0
+----------------------------------------
+PRODUCTO           CANT  ITBIS
+----------------------------------------
+Canela                1  19.80
+----------------------------------------
+SUBTOTAL:    110.00
+ITBIS:        19.80
+TOTAL:        129.80
+EFECTIVO:       150.00
+DEVUELTA:        20.20
+----------------------------------------
+FORMA DE PAGO: EFECTIVO
+CAJERO: Wederick
+----------------------------------------
+GRACIAS POR SU COMPRA
+Conserve este ticket
+Generado: 03/10/2025 17:07:14

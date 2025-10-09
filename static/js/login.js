@@ -3,7 +3,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const errorMessage = document.getElementById('error-message');
     const usernameInput = document.getElementById('username');
     const passwordInput = document.getElementById('password');
+    const rememberCheckbox = document.getElementById('remember');
     const bubblesContainer = document.getElementById('bubbles');
+    const savedSessionsContainer = document.getElementById('saved-sessions');
+    const savedUsersList = document.getElementById('saved-users-list');
+    
+    // Cargar sesiones guardadas al iniciar
+    loadSavedSessions();
     
     // Crear burbujas animadas para el fondo
     function createBubbles() {
@@ -41,12 +47,104 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 5000);
     };
     
+    // Función para guardar sesión
+    function saveSession(username) {
+        // Obtener sesiones guardadas actuales
+        const savedSessions = JSON.parse(localStorage.getItem('facturapro_saved_sessions')) || [];
+        
+        // Verificar si el usuario ya está guardado
+        const existingUserIndex = savedSessions.findIndex(session => session.username === username);
+        
+        if (existingUserIndex === -1) {
+            // Agregar nuevo usuario con fecha
+            savedSessions.push({
+                username: username,
+                savedAt: new Date().toISOString()
+            });
+            
+            // Guardar en localStorage
+            localStorage.setItem('facturapro_saved_sessions', JSON.stringify(savedSessions));
+            
+            // Recargar la lista de sesiones guardadas
+            loadSavedSessions();
+        }
+    }
+    
+    // Función para cargar sesiones guardadas
+    function loadSavedSessions() {
+        // Obtener sesiones guardadas
+        const savedSessions = JSON.parse(localStorage.getItem('facturapro_saved_sessions')) || [];
+        
+        // Limpiar lista actual
+        savedUsersList.innerHTML = '';
+        
+        if (savedSessions.length === 0) {
+            // Mostrar mensaje si no hay sesiones guardadas
+            savedSessionsContainer.style.display = 'none';
+            return;
+        }
+        
+        // Mostrar el contenedor de sesiones guardadas
+        savedSessionsContainer.style.display = 'block';
+        
+        // Crear elementos para cada sesión guardada
+        savedSessions.forEach(session => {
+            const listItem = document.createElement('li');
+            listItem.className = 'saved-user';
+            
+            // Obtener iniciales del usuario
+            const initials = session.username.substring(0, 2).toUpperCase();
+            
+            listItem.innerHTML = `
+                <div class="user-info">
+                    <div class="user-avatar">${initials}</div>
+                    <span class="user-name">${session.username}</span>
+                </div>
+                <div class="user-actions">
+                    <button class="delete-session" data-username="${session.username}" title="Eliminar sesión guardada">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            `;
+            
+            // Agregar evento para cargar usuario
+            listItem.querySelector('.user-info').addEventListener('click', () => {
+                usernameInput.value = session.username;
+                passwordInput.focus();
+            });
+            
+            // Agregar evento para eliminar sesión
+            listItem.querySelector('.delete-session').addEventListener('click', (e) => {
+                e.stopPropagation(); // Prevenir que se active el evento del elemento padre
+                deleteSession(session.username);
+            });
+            
+            savedUsersList.appendChild(listItem);
+        });
+    }
+    
+    // Función para eliminar sesión guardada
+    function deleteSession(username) {
+        // Obtener sesiones guardadas actuales
+        const savedSessions = JSON.parse(localStorage.getItem('facturapro_saved_sessions')) || [];
+        
+        // Filtrar para eliminar la sesión
+        const updatedSessions = savedSessions.filter(session => session.username !== username);
+        
+        // Guardar en localStorage
+        localStorage.setItem('facturapro_saved_sessions', JSON.stringify(updatedSessions));
+        
+        // Recargar la lista de sesiones guardadas
+        loadSavedSessions();
+    }
+    
     // Manejar el envío del formulario
     loginForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         
         const username = usernameInput.value.trim();
         const password = passwordInput.value.trim();
+        const remember = rememberCheckbox.checked;
         
         // Validación básica
         if (!username) {
@@ -81,6 +179,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = await response.json();
             
             if (response.ok && data.success) {
+                // Si se marcó "Recordar sesión", guardar la sesión
+                if (remember) {
+                    saveSession(username);
+                }
+                
                 // Redirección exitosa
                 loginButton.innerHTML = '<i class="fas fa-check"></i> Acceso concedido';
                 

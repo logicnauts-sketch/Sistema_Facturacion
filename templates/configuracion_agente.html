@@ -1,0 +1,407 @@
+{% extends "home.html" %}
+
+{% block title %}Configuración del Agente de Impresión{% endblock %}
+
+{% block styles %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/notyf@3/notyf.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+.configuration-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.configuration-header {
+    text-align: center;
+    margin-bottom: 30px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 30px;
+    border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+}
+
+.configuration-header h1 {
+    margin-bottom: 15px;
+    font-weight: 700;
+    font-size: 2.2rem;
+}
+
+.configuration-header p {
+    opacity: 0.9;
+    font-size: 1.2rem;
+    margin-bottom: 0;
+}
+
+.config-form {
+    background: white;
+    padding: 30px;
+    border-radius: 15px;
+    box-shadow: 0 5px 25px rgba(0, 0, 0, 0.08);
+    margin-bottom: 25px;
+}
+
+.form-group {
+    margin-bottom: 25px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 10px;
+    font-weight: 600;
+    color: #2d3748;
+    font-size: 1.1rem;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 15px;
+    border: 2px solid #e2e8f0;
+    border-radius: 10px;
+    font-size: 16px;
+    transition: all 0.3s ease;
+    background-color: #f8fafc;
+}
+
+.form-group input:focus {
+    border-color: #667eea;
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    background-color: white;
+}
+
+.form-text {
+    font-size: 14px;
+    color: #718096;
+    margin-top: 8px;
+    font-style: italic;
+}
+
+.form-actions {
+    display: flex;
+    gap: 15px;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    margin-top: 30px;
+}
+
+.btn {
+    padding: 14px 28px;
+    border: none;
+    border-radius: 10px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.btn-primary:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+}
+
+.btn-secondary {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    color: white;
+}
+
+.btn-secondary:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(245, 87, 108, 0.3);
+}
+
+.btn:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+.help-box {
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    color: white;
+    padding: 25px;
+    border-radius: 15px;
+    margin-top: 30px;
+    box-shadow: 0 5px 25px rgba(0, 0, 0, 0.1);
+}
+
+.help-box h3 {
+    margin-top: 0;
+    margin-bottom: 20px;
+    font-size: 1.4rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.help-box ul {
+    margin-bottom: 0;
+    padding-left: 20px;
+}
+
+.help-box li {
+    margin-bottom: 12px;
+    line-height: 1.5;
+}
+
+.status-indicator {
+    display: inline-flex;
+    align-items: center;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 600;
+    margin-left: 15px;
+}
+
+.status-online {
+    background-color: #48bb78;
+    color: white;
+}
+
+.status-offline {
+    background-color: #f56565;
+    color: white;
+}
+
+@media (max-width: 768px) {
+    .configuration-container {
+        padding: 15px;
+    }
+    
+    .configuration-header {
+        padding: 20px;
+    }
+    
+    .configuration-header h1 {
+        font-size: 1.8rem;
+    }
+    
+    .config-form {
+        padding: 20px;
+    }
+    
+    .form-actions {
+        flex-direction: column;
+    }
+    
+    .btn {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+.notyf__toast {
+    border-radius: 10px;
+}
+
+.notyf__message {
+    font-size: 16px;
+    font-weight: 500;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="configuration-container">
+    <div class="configuration-header">
+        <h1><i class="fas fa-print"></i> Configuración del Agente de Impresión</h1>
+        <p>Configure la dirección IP del agente de impresión local</p>
+    </div>
+
+    <div class="config-form">
+        <form id="agenteConfigForm">
+            <div class="form-group">
+                <label for="ip_agente">
+                    <i class="fas fa-server"></i> Dirección IP del Agente:
+                    <span class="status-indicator" id="statusIndicator">
+                        <i class="fas fa-circle"></i> Estado desconocido
+                    </span>
+                </label>
+                <input type="text" id="ip_agente" name="ip_agente" 
+                       value="{{ ip_agente or '' }}" 
+                       placeholder="Ej: 192.168.1.100 o 38.41.184.220" required>
+                <small class="form-text">Ingrese la dirección IP del equipo donde está ejecutándose el agente de impresión</small>
+            </div>
+            
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> Guardar Configuración
+                </button>
+                <button type="button" class="btn btn-secondary" id="testConnectionBtn">
+                    <i class="fas fa-plug"></i> Probar Conexión
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <div class="help-box">
+        <h3><i class="fas fa-info-circle"></i> Información importante:</h3>
+        <ul>
+            <li><i class="fas fa-check-circle"></i> El agente debe estar ejecutándose en el equipo con la impresora</li>
+            <li><i class="fas fa-check-circle"></i> Si está fuera de la red local, necesita configurar reenvío de puertos en el router</li>
+            <li><i class="fas fa-check-circle"></i> El puerto 5001 debe estar abierto en el firewall del equipo</li>
+            <li><i class="fas fa-check-circle"></i> Para impresoras en red, asegúrese de que la IP sea accesible desde internet</li>
+            <li><i class="fas fa-check-circle"></i> Use la IP pública (38.41.184.220) para conexiones desde internet</li>
+        </ul>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/notyf@3/notyf.min.js"></script>
+<script>
+// Inicializar Notyf
+var notyf = new Notyf({
+    duration: 5000,
+    position: {
+        x: 'right',
+        y: 'top',
+    },
+    types: [
+        {
+            type: 'success',
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            icon: {
+                className: 'fas fa-check-circle',
+                tagName: 'i',
+                color: '#fff'
+            },
+            dismissible: true
+        },
+        {
+            type: 'error',
+            background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+            icon: {
+                className: 'fas fa-exclamation-circle',
+                tagName: 'i',
+                color: '#fff'
+            },
+            dismissible: true
+        },
+        {
+            type: 'info',
+            background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+            icon: {
+                className: 'fas fa-info-circle',
+                tagName: 'i',
+                color: '#fff'
+            },
+            dismissible: true
+        }
+    ]
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('agenteConfigForm');
+    const testBtn = document.getElementById('testConnectionBtn');
+    const statusIndicator = document.getElementById('statusIndicator');
+    const ipInput = document.getElementById('ip_agente');
+
+    // Verificar estado automáticamente al cargar la página
+    if (ipInput.value) {
+        checkAgentStatus(ipInput.value);
+    }
+
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(form);
+        
+        fetch('/configuracion/agente', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                notyf.success(data.message || 'Configuración guardada correctamente');
+                // Verificar estado después de guardar
+                checkAgentStatus(ipInput.value);
+            } else {
+                notyf.error(data.message || 'Error al guardar la configuración');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            notyf.error('Error al guardar la configuración');
+        });
+    });
+
+    testBtn.addEventListener('click', function() {
+        const ip = ipInput.value;
+        if (!ip) {
+            notyf.error('Por favor, ingrese una dirección IP primero');
+            return;
+        }
+        
+        checkAgentStatus(ip, true);
+    });
+
+    function checkAgentStatus(ip, showNotification = false) {
+        testBtn.disabled = true;
+        testBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Probando...';
+        statusIndicator.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verificando...';
+        statusIndicator.className = 'status-indicator';
+        
+        fetch(`http://${ip}:5001/`, { 
+            method: 'GET',
+            headers: {
+                'X-Api-Token': 'november'
+            }
+        })
+        .then(response => {
+            if (response.ok) {
+                return response.json();
+            }
+            throw new Error('Error en la respuesta del servidor');
+        })
+        .then(data => {
+            if (data.status === 'active') {
+                statusIndicator.innerHTML = '<i class="fas fa-check-circle"></i> Conectado';
+                statusIndicator.className = 'status-indicator status-online';
+                if (showNotification) {
+                    notyf.success('¡Conexión exitosa! El agente está respondiendo correctamente.');
+                }
+            } else {
+                statusIndicator.innerHTML = '<i class="fas fa-times-circle"></i> Error de estado';
+                statusIndicator.className = 'status-indicator status-offline';
+                if (showNotification) {
+                    notyf.error('El agente respondió pero con un estado inesperado.');
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error de conexión:', error);
+            statusIndicator.innerHTML = '<i class="fas fa-times-circle"></i> Desconectado';
+            statusIndicator.className = 'status-indicator status-offline';
+            if (showNotification) {
+                notyf.error('Error: No se pudo conectar con el agente. Verifique:\n1. Que la IP sea correcta\n2. Que el agente esté ejecutándose\n3. Que el firewall permita conexiones en el puerto 5001\n4. Que el router tenga configurado el reenvío de puertos');
+            }
+        })
+        .finally(() => {
+            testBtn.disabled = false;
+            testBtn.innerHTML = '<i class="fas fa-plug"></i> Probar Conexión';
+        });
+    }
+
+    // Verificar estado cuando cambia la IP
+    ipInput.addEventListener('blur', function() {
+        if (this.value) {
+            checkAgentStatus(this.value);
+        }
+    });
+});
+</script>
+{% endblock %}

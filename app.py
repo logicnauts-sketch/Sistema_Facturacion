@@ -24,12 +24,13 @@ from routes import verifone
 from routes import impresora
 from routes import empresa
 from routes import caja
+from routes import configuracion
 from flask_mail import Mail
 
 
 
 app = Flask(__name__)
-app.secret_key = "jul"
+app.secret_key = "november"
 
 # Configuración de Flask-Mail
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'
@@ -48,7 +49,7 @@ mail = Mail(app)
 app.register_blueprint(clientes.bp)
 app.register_blueprint(home.bp)
 app.register_blueprint(proveedores.bp)
-app.register_blueprint(facturacion.bp)
+app.register_blueprint(facturacion.bp, url_prefix='/facturacion')
 app.register_blueprint(productos.bp)
 app.register_blueprint(inventario.bp)
 app.register_blueprint(controlventas.bp)
@@ -70,6 +71,8 @@ app.register_blueprint(verifone.bp)
 app.register_blueprint(impresora.bp)
 app.register_blueprint(empresa.bp)
 app.register_blueprint(caja.bp)
+app.register_blueprint(configuracion.bp)
+
 
 if __name__ == "__main__":
     app.run(debug=True)

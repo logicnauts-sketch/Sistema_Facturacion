@@ -1,7 +1,12 @@
-from flask import Blueprint, render_template, jsonify, request
+from flask import Blueprint, render_template, jsonify, request, send_file
 from conexion import conectar
 import math
 from utils import login_required, solo_admin_required
+import openpyxl
+from openpyxl import Workbook
+from openpyxl.utils import get_column_letter
+from io import BytesIO
+import datetime
 
 bp = Blueprint('productos', __name__)
 
@@ -351,7 +356,7 @@ def handle_producto(id):
                 return None, "Producto no encontrado"
             
             # Eliminar movimientos y producto
-            cursor.execute("DELETE FROM movimientos_inventario WHERE producto_id = %s", (id,))
+            cursor.execute("DELETE FROM movimientos WHERE producto_id = %s", (id,))
             cursor.execute("DELETE FROM productos WHERE id = %s", (id,))
             conn.commit()
             cursor.close()
@@ -387,6 +392,259 @@ def get_proximo_codigo():
         return jsonify(resultado)
     else:
         return jsonify({'error': error}), 500
+
+# --- Nuevas funciones para importar/exportar Excel ---
+
+@bp.route('/api/productos/exportar', methods=['GET'])
+@login_required
+@solo_admin_required
+def exportar_productos():
+    categoria_filtro = request.args.get('categoria', 'Todos')
+    buscar_filtro = request.args.get('buscar', '').strip()
+    
+    def operacion(conn):
+        productos = obtener_productos(conn, categoria_filtro, buscar_filtro)
+        
+        # Crear un libro de trabajo de Excel
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Productos"
+        
+        # Encabezados
+        encabezados = ['Código', 'Nombre', 'Descripción', 'Categoría', 'Precio Compra', 
+                       'Precio Venta', 'Stock Actual', 'Stock Mínimo', 'Stock Máximo', 'Impuesto (%)']
+        for col, encabezado in enumerate(encabezados, 1):
+            ws.cell(row=1, column=col, value=encabezado)
+        
+        # Llenar con datos
+        for row, producto in enumerate(productos, 2):
+            ws.cell(row=row, column=1, value=producto.get('codigo', ''))
+            ws.cell(row=row, column=2, value=producto.get('nombre', ''))
+            ws.cell(row=row, column=3, value=producto.get('descripcion', ''))
+            ws.cell(row=row, column=4, value=producto.get('categoria', ''))
+            ws.cell(row=row, column=5, value=producto.get('precio_compra', 0))
+            ws.cell(row=row, column=6, value=producto.get('precio_venta', 0))
+            ws.cell(row=row, column=7, value=producto.get('stock_actual', 0))
+            ws.cell(row=row, column=8, value=producto.get('stock_minimo', 0))
+            ws.cell(row=row, column=9, value=producto.get('stock_maximo', 0))
+            ws.cell(row=row, column=10, value=producto.get('impuesto', 0))
+        
+        # Ajustar el ancho de las columnas
+        for col in range(1, len(encabezados) + 1):
+            col_letter = get_column_letter(col)
+            ws.column_dimensions[col_letter].width = 15
+        
+        # Guardar en un buffer
+        buffer = BytesIO()
+        wb.save(buffer)
+        buffer.seek(0)
+        
+        return buffer
+    
+    resultado, error = manejar_db(operacion)
+    if error:
+        return jsonify({'error': error}), 500
+    
+    # Enviar el archivo
+    fecha = datetime.datetime.now().strftime("%Y-%m-%d")
+    return send_file(
+        resultado,
+        as_attachment=True,
+        download_name=f'productos_{fecha}.xlsx',
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+
+
+@bp.route('/api/productos/importar', methods=['POST'])
+@login_required
+@solo_admin_required
+def importar_productos():
+    if 'file' not in request.files:
+        return jsonify({'error': 'No se proporcionó ningún archivo'}), 400
+    
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'error': 'No se seleccionó ningún archivo'}), 400
+    
+    if not (file.filename.endswith('.xlsx') or file.filename.endswith('.xls')):
+        return jsonify({'error': 'Formato de archivo no válido. Debe ser .xlsx o .xls'}), 400
+    
+    overwrite = request.form.get('overwrite', 'false').lower() == 'true'
+    
+    try:
+        wb = openpyxl.load_workbook(file)
+        ws = wb.active
+        
+        # Leer encabezados
+        headers = [cell.value for cell in ws[1]]
+        
+        # Mapeo de columnas (puede variar según el orden en el Excel)
+        column_map = {}
+        for idx, header in enumerate(headers, 1):
+            if header == 'Código':
+                column_map['codigo'] = idx
+            elif header == 'Nombre':
+                column_map['nombre'] = idx
+            elif header == 'Descripción':
+                column_map['descripcion'] = idx
+            elif header == 'Categoría':
+                column_map['categoria'] = idx
+            elif header == 'Precio Compra':
+                column_map['precio_compra'] = idx
+            elif header == 'Precio Venta':
+                column_map['precio_venta'] = idx
+            elif header == 'Stock Actual':
+                column_map['stock_actual'] = idx
+            elif header == 'Stock Mínimo':
+                column_map['stock_minimo'] = idx
+            elif header == 'Stock Máximo':
+                column_map['stock_maximo'] = idx
+            elif header == 'Impuesto (%)':
+                column_map['impuesto'] = idx
+        
+        # Validar que tenemos las columnas necesarias
+        required_columns = ['nombre', 'categoria', 'precio_compra', 'precio_venta', 'stock_actual', 'stock_minimo', 'stock_maximo']
+        for col in required_columns:
+            if col not in column_map:
+                return jsonify({'error': f'Falta la columna requerida: {col}'}), 400
+        
+        productos = []
+        for row in range(2, ws.max_row + 1):
+            # Leer cada fila
+            producto = {
+                'codigo': ws.cell(row=row, column=column_map.get('codigo', 0)).value,
+                'nombre': ws.cell(row=row, column=column_map['nombre']).value,
+                'descripcion': ws.cell(row=row, column=column_map.get('descripcion', 0)).value,
+                'categoria_nombre': ws.cell(row=row, column=column_map['categoria']).value,
+                'precio_compra': ws.cell(row=row, column=column_map['precio_compra']).value,
+                'precio_venta': ws.cell(row=row, column=column_map['precio_venta']).value,
+                'stock_actual': ws.cell(row=row, column=column_map['stock_actual']).value,
+                'stock_minimo': ws.cell(row=row, column=column_map['stock_minimo']).value,
+                'stock_maximo': ws.cell(row=row, column=column_map['stock_maximo']).value,
+                'impuesto': ws.cell(row=row, column=column_map.get('impuesto', 0)).value or 0
+            }
+            
+            # Validaciones básicas
+            if not producto['nombre'] or not producto['categoria_nombre']:
+                continue  # Saltar filas sin nombre o categoría
+            
+            # Convertir tipos numéricos
+            try:
+                producto['precio_compra'] = float(producto['precio_compra'] or 0)
+                producto['precio_venta'] = float(producto['precio_venta'] or 0)
+                producto['stock_actual'] = int(producto['stock_actual'] or 0)
+                producto['stock_minimo'] = int(producto['stock_minimo'] or 0)
+                producto['stock_maximo'] = int(producto['stock_maximo'] or 0)
+                producto['impuesto'] = float(producto['impuesto'] or 0)
+            except (ValueError, TypeError):
+                # Si hay error en conversión, usar valores por defecto
+                producto['precio_compra'] = 0
+                producto['precio_venta'] = 0
+                producto['stock_actual'] = 0
+                producto['stock_minimo'] = 0
+                producto['stock_maximo'] = 0
+                producto['impuesto'] = 0
+            
+            productos.append(producto)
+        
+        # Ahora procesar los productos en la base de datos
+        def operacion(conn):
+            cursor = conn.cursor()
+            errores = []
+            insertados = 0
+            actualizados = 0
+            
+            for producto in productos:
+                # Verificar si la categoría existe, si no, crearla
+                cursor.execute("SELECT id FROM categorias WHERE nombre = %s", (producto['categoria_nombre'],))
+                categoria = cursor.fetchone()
+                if not categoria:
+                    # Crear la categoría
+                    cursor.execute("INSERT INTO categorias (nombre) VALUES (%s)", (producto['categoria_nombre'],))
+                    conn.commit()
+                    categoria_id = cursor.lastrowid
+                else:
+                    categoria_id = categoria[0]
+                
+                # Verificar si el producto ya existe (por código o por nombre y categoría)
+                if producto['codigo']:
+                    cursor.execute("SELECT id FROM productos WHERE codigo = %s", (producto['codigo'],))
+                    producto_existente = cursor.fetchone()
+                else:
+                    cursor.execute("SELECT id FROM productos WHERE nombre = %s AND categoria_id = %s", 
+                                  (producto['nombre'], categoria_id))
+                    producto_existente = cursor.fetchone()
+                
+                try:
+                    if producto_existente and overwrite:
+                        # Actualizar producto existente
+                        cursor.execute("""
+                            UPDATE productos SET
+                                nombre = %s,
+                                descripcion = %s,
+                                categoria_id = %s,
+                                precio_compra = %s,
+                                precio_venta = %s,
+                                stock_actual = %s,
+                                stock_minimo = %s,
+                                stock_maximo = %s,
+                                impuesto = %s
+                            WHERE id = %s
+                        """, (
+                            producto['nombre'],
+                            producto['descripcion'],
+                            categoria_id,
+                            producto['precio_compra'],
+                            producto['precio_venta'],
+                            producto['stock_actual'],
+                            producto['stock_minimo'],
+                            producto['stock_maximo'],
+                            producto['impuesto'],
+                            producto_existente[0]
+                        ))
+                        actualizados += 1
+                    else:
+                        # Insertar nuevo producto
+                        cursor.execute("""
+                            INSERT INTO productos (
+                                codigo, nombre, descripcion, categoria_id, 
+                                precio_compra, precio_venta, stock_actual, 
+                                stock_minimo, stock_maximo, impuesto
+                            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        """, (
+                            producto['codigo'],
+                            producto['nombre'],
+                            producto['descripcion'],
+                            categoria_id,
+                            producto['precio_compra'],
+                            producto['precio_venta'],
+                            producto['stock_actual'],
+                            producto['stock_minimo'],
+                            producto['stock_maximo'],
+                            producto['impuesto']
+                        ))
+                        insertados += 1
+                except Exception as e:
+                    errores.append(f"Error con producto {producto['nombre']}: {str(e)}")
+            
+            conn.commit()
+            cursor.close()
+            
+            return {
+                'message': 'Importación completada',
+                'insertados': insertados,
+                'actualizados': actualizados,
+                'errores': errores
+            }
+        
+        resultado, error = manejar_db(operacion)
+        if error:
+            return jsonify({'error': error}), 500
+        
+        return jsonify(resultado)
+        
+    except Exception as e:
+        return jsonify({'error': f'Error al procesar el archivo: {str(e)}'}), 500
 
 # Rutas para categorías
 @bp.route('/api/categorias', methods=['GET'])

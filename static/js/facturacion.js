@@ -42,7 +42,7 @@ function calculateItbis(price) {
 // Funciones de gestión de datos
 async function searchProducts(term) {
     try {
-        const response = await fetch(`/api/productos?q=${encodeURIComponent(term)}`);
+        const response = await fetch(`/facturacion/api/productos?q=${encodeURIComponent(term)}`);
         if (!response.ok) throw new Error('Error en la respuesta del servidor');
         const data = await response.json();
         return data.map(product => ({
@@ -408,6 +408,7 @@ async function generateInvoice() {
     const itbisTotalEl = document.getElementById('itbis-total');
     const invoiceBtn = document.getElementById('invoice-btn');
     const dueDateElement = document.getElementById('due-date');
+    const amountReceived = document.getElementById('amount-received');
 
     // Verificar estado de caja
     const cajaAbierta = await verificarEstadoCaja();
@@ -441,6 +442,11 @@ async function generateInvoice() {
         tipo: currentClient.type === 'proveedor' ? 'compra' : 'venta'
     };
 
+    // Agregar monto recibido si el pago es en efectivo
+    if (currentPaymentMethod === 'efectivo' && amountReceived) {
+        facturaData.monto_recibido = parseFormattedNumber(amountReceived.value) || 0;
+    }
+
     // Validación para crédito
     if (currentPaymentMethod === 'credito') {
         if (dueDateElement && dueDateElement.value) {
@@ -456,7 +462,7 @@ async function generateInvoice() {
     invoiceBtn.disabled = true;
 
     try {
-        const response = await fetch('/api/facturas', {
+        const response = await fetch('/facturacion/api/facturas', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(facturaData)

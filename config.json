@@ -1,0 +1,9 @@
+{
+  "BASE_URL": "https://pruebasistema.pythonanywhere.com",
+  "API_TOKEN": "november",
+  "INTERVALO_CONSULTA": 10,
+  "printer_name": "POS-58-Series",
+  "modo_impresion": "RAW",
+  "encoding_default": "utf-8",
+  "copies_default": 1
+}

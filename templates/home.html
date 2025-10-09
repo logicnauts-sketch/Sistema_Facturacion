@@ -181,6 +181,11 @@
                         <i class="fas fa-credit-card"></i>
                         <span>Verifone</span>
                     </a> 
+                    <a href="{{ url_for('configuracion.configurar_agente') }}" class="accounting-item {% if request.path == '/configuracion' %}active{% endif %}">
+                        <i class="fas fa-credit-card"></i>
+                        <span> Configurar Agente</span>
+                    </a> 
+
                    <a href="{{ url_for('empresa.obtener_empresa') }}" class="accounting-item {% if request.path == '/configuracion' %}active{% endif %}">
                         <i class="fas fa-building"></i>
                         <span>Empresa</span>

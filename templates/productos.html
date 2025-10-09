@@ -33,6 +33,58 @@
         font-size: 16px;
         margin-bottom: 0;
     }
+    
+    /* Estilos para los botones de Excel */
+    .excel-buttons {
+        display: flex;
+        gap: 10px;
+        margin-right: 10px;
+    }
+    
+    .btn-excel-import {
+        background-color: #21a366;
+        color: white;
+        border: none;
+    }
+    
+    .btn-excel-export {
+        background-color: #217346;
+        color: white;
+        border: none;
+    }
+    
+    .btn-excel-import:hover {
+        background-color: #1a8a57;
+        color: white;
+    }
+    
+    .btn-excel-export:hover {
+        background-color: #1a603b;
+        color: white;
+    }
+    
+    /* Estilos para estados de stock */
+    .status {
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: 500;
+    }
+    
+    .status-danger {
+        background-color: #ffebee;
+        color: #c62828;
+    }
+    
+    .status-warning {
+        background-color: #fff8e1;
+        color: #f57c00;
+    }
+    
+    .status-normal {
+        background-color: #e8f5e9;
+        color: #2e7d32;
+    }
 </style>
 {% endblock %}
 
@@ -45,6 +97,14 @@
         </h1>
 
         <div class="text-right mb-3" style="display: flex; justify-content: flex-end; gap: 10px;">
+            <div class="excel-buttons">
+                <button id="importExcelBtn" class="btn btn-excel-import">
+                    <i class="fas fa-file-import"></i> Importar Excel
+                </button>
+                <button id="exportExcelBtn" class="btn btn-excel-export">
+                    <i class="fas fa-file-export"></i> Exportar Excel
+                </button>
+            </div>
             <button id="openAddProductModal" class="btn btn-primary">
                 <i class="fas fa-plus"></i> Agregar Producto
             </button>
@@ -240,7 +300,6 @@
     </div>
 </div>
 
-
 <!-- Modal para agregar/editar categorías -->
 <div class="modal" id="addCategoryModal">
     <div class="modal-content">
@@ -277,6 +336,62 @@
         </div>
     </div>
 </div>
+
+<!-- Modal para importar Excel -->
+<div class="modal" id="importExcelModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title">Importar Productos desde Excel</h2>
+            <button type="button" class="close">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="import-instructions">
+                <p><strong>Instrucciones:</strong></p>
+                <ol>
+                    <li>Descarga la plantilla de ejemplo para asegurar el formato correcto</li>
+                    <li>El archivo Excel debe contener las siguientes columnas:
+                        <ul>
+                            <li><strong>Código</strong> (opcional): Código único del producto</li>
+                            <li><strong>Nombre</strong> (obligatorio): Nombre del producto</li>
+                            <li><strong>Descripción</strong> (opcional): Descripción del producto</li>
+                            <li><strong>Categoría</strong> (obligatorio): Categoría del producto</li>
+                            <li><strong>Precio Compra</strong> (obligatorio): Precio de compra</li>
+                            <li><strong>Precio Venta</strong> (obligatorio): Precio de venta</li>
+                            <li><strong>Stock Actual</strong> (obligatorio): Cantidad actual</li>
+                            <li><strong>Stock Mínimo</strong> (obligatorio): Stock mínimo permitido</li>
+                            <li><strong>Stock Máximo</strong> (obligatorio): Stock máximo permitido</li>
+                            <li><strong>Impuesto</strong> (opcional): Porcentaje de impuesto (0 por defecto)</li>
+                        </ul>
+                    </li>
+                </ol>
+                <p><a href="#" id="downloadTemplate">Descargar plantilla de ejemplo</a></p>
+            </div>
+            <form id="import-excel-form" enctype="multipart/form-data">
+                <div class="form-group">
+                    <label class="form-label">Seleccionar archivo Excel</label>
+                    <input type="file" id="excel-file" class="form-control" accept=".xlsx, .xls" required>
+                    <small class="form-text text-muted">Formatos aceptados: .xlsx, .xls</small>
+                </div>
+                <div class="form-check mb-3">
+                    <input type="checkbox" class="form-check-input" id="overwrite-products" name="overwrite">
+                    <label class="form-check-label" for 'overwrite-products'>Sobrescribir productos existentes (mismo código)</label>
+                </div>
+                <div class="import-progress" style="display: none;">
+                    <div class="progress">
+                        <div class="progress-bar" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
+                    </div>
+                    <p class="progress-status">Preparando importación...</p>
+                </div>
+                <div style="margin-top: 20px;">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-upload"></i> Importar Productos
+                    </button>
+                    <button type="button" class="btn btn-secondary" id="cancel-import">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
@@ -285,7 +400,62 @@
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <!-- Notyf JS para notificaciones -->
 <script src="https://cdn.jsdelivr.net/npm/notyf@3/notyf.min.js"></script>
+<!-- SheetJS (xlsx) para manejo de archivos Excel -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="/static/js/productos.js"></script>
 
+<script>
+// Función para verificar stock bajo y mostrar alertas
+function checkLowStock() {
+    const lowStockItems = [];
+    
+    document.querySelectorAll('#products-table-body tr').forEach(row => {
+        const statusElement = row.querySelector('.status');
+        if (statusElement && 
+            (statusElement.classList.contains('status-danger') || 
+             statusElement.classList.contains('status-warning'))) {
+            
+            const productName = row.querySelector('td:nth-child(2)').textContent;
+            const stockLevel = row.querySelector('td:nth-child(5)').textContent;
+            const minStock = row.querySelector('td:nth-child(6)').textContent;
+            const statusText = statusElement.textContent;
+            
+            lowStockItems.push({
+                name: productName,
+                stock: stockLevel,
+                minStock: minStock,
+                status: statusText
+            });
+        }
+    });
+    
+    if (lowStockItems.length > 0) {
+        // Crear mensaje HTML para la alerta
+        let alertMessage = '<div style="text-align: left; max-height: 300px; overflow-y: auto;">';
+        alertMessage += '<p>Los siguientes productos tienen stock bajo:</p>';
+        alertMessage += '<ul style="padding-left: 20px; margin-bottom: 0;">';
+        
+        lowStockItems.forEach(item => {
+            alertMessage += `<li><strong>${item.name}</strong>: ${item.stock} unidades (Mínimo: ${item.minStock}) - <span style="color: ${item.status === 'Muy bajo' ? '#ef476f' : '#ffd166'}">${item.status}</span></li>`;
+        });
+        
+        alertMessage += '</ul></div>';
+        
+        // Mostrar alerta con SweetAlert2
+        Swal.fire({
+            title: '¡Alerta de Stock Bajo!',
+            html: alertMessage,
+            icon: 'warning',
+            confirmButtonText: 'Entendido',
+            width: '600px'
+        });
+    }
+}
 
+// Llamar a la función cuando se cargue la página
+document.addEventListener('DOMContentLoaded', function() {
+    // Esperar un poco para que se cargue la tabla
+    setTimeout(checkLowStock, 1000);
+});
+</script>
 {% endblock %}

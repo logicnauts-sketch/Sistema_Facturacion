@@ -1,3 +1,9 @@
+// Función para autoajustar textarea
+function autoResize(textarea) {
+    textarea.style.height = 'auto';
+    textarea.style.height = (textarea.scrollHeight) + 'px';
+}
+
 (function() {
     // Variables globales
     let currentCategory = null;
@@ -23,6 +29,13 @@
     const categoryNameInput = document.getElementById('category-name');
     const addCategoryBtn = document.getElementById('add-category-btn');
     const categoryError = document.getElementById('category-error');
+    const importExcelBtn = document.getElementById('importExcelBtn');
+    const exportExcelBtn = document.getElementById('exportExcelBtn');
+    const importExcelModal = document.getElementById('importExcelModal');
+    const importExcelForm = document.getElementById('import-excel-form');
+    const closeImportModalBtn = importExcelModal.querySelector('.close');
+    const cancelImportBtn = document.getElementById('cancel-import');
+    const downloadTemplateLink = document.getElementById('downloadTemplate');
 
     // Initialize Notyf for notifications
     const notyf = new Notyf({
@@ -87,6 +100,148 @@
         const precioVenta = precioConMargen * (1 + (taxPercentage / 100));
         const salePriceEl = document.getElementById('product-sale-price');
         if (salePriceEl) salePriceEl.value = precioVenta.toFixed(2);
+    }
+
+    // ============================================
+    // FUNCIONES PARA IMPORTAR/EXPORTAR EXCEL
+    // ============================================
+
+    // Función para exportar a Excel
+    async function exportToExcel() {
+        try {
+            notyf.open({
+                type: 'info',
+                message: 'Preparando exportación...'
+            });
+            
+            // Obtener los productos desde el servidor
+            let url = '/api/productos/exportar';
+            
+            // Agregar filtros si existen
+            const params = new URLSearchParams();
+            if (currentCategory && currentCategory !== 'Todos') {
+                params.append('categoria', currentCategory);
+            }
+            if (currentSearchTerm) {
+                params.append('buscar', currentSearchTerm);
+            }
+            
+            if (params.toString()) {
+                url += '?' + params.toString();
+            }
+            
+            const response = await fetch(url);
+            
+            if (response.ok) {
+                const blob = await response.blob();
+                const downloadUrl = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = downloadUrl;
+                
+                // Crear nombre de archivo con fecha
+                const date = new Date();
+                const dateStr = `${date.getFullYear()}-${(date.getMonth()+1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`;
+                a.download = `productos_${dateStr}.xlsx`;
+                
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(downloadUrl);
+                
+                notyf.success('Exportación completada correctamente');
+            } else {
+                const error = await response.json();
+                throw new Error(error.error || 'Error al exportar los productos');
+            }
+        } catch (error) {
+            notyf.error('Error al exportar: ' + error.message);
+            console.error('Export error:', error);
+        }
+    }
+
+    // Función para descargar plantilla de importación
+    function downloadTemplate() {
+        // Crear datos de ejemplo para la plantilla
+        const templateData = [
+            {
+                'Código': 'PRD-001',
+                'Nombre': 'Producto Ejemplo 1',
+                'Descripción': 'Descripción del producto ejemplo',
+                'Categoría': 'Categoría Ejemplo',
+                'Precio Compra': 10.50,
+                'Precio Venta': 15.99,
+                'Stock Actual': 100,
+                'Stock Mínimo': 10,
+                'Stock Máximo': 200,
+                'Impuesto': 18
+            },
+            {
+                'Código': 'PRD-002',
+                'Nombre': 'Producto Ejemplo 2',
+                'Descripción': 'Otra descripción de ejemplo',
+                'Categoría': 'Otra Categoría',
+                'Precio Compra': 25.00,
+                'Precio Venta': 35.50,
+                'Stock Actual': 50,
+                'Stock Mínimo': 5,
+                'Stock Máximo': 100,
+                'Impuesto': 0
+            }
+        ];
+        
+        // Crear libro de trabajo
+        const ws = XLSX.utils.json_to_sheet(templateData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Productos');
+        
+        // Generar archivo y descargar
+        XLSX.writeFile(wb, 'plantilla_importacion_productos.xlsx');
+        
+        notyf.success('Plantilla descargada correctamente');
+    }
+
+    // Función para importar desde Excel
+    async function importFromExcel(formData) {
+        try {
+            // Mostrar progreso
+            const progressBar = document.querySelector('.import-progress .progress-bar');
+            const progressStatus = document.querySelector('.progress-status');
+            document.querySelector('.import-progress').style.display = 'block';
+            
+            progressBar.style.width = '10%';
+            progressBar.textContent = '10%';
+            progressStatus.textContent = 'Subiendo archivo...';
+            
+            const response = await fetch('/api/productos/importar', {
+                method: 'POST',
+                body: formData
+            });
+            
+            if (response.ok) {
+                const result = await response.json();
+                
+                progressBar.style.width = '100%';
+                progressBar.textContent = '100%';
+                progressStatus.textContent = 'Importación completada!';
+                
+                // Cerrar modal después de un breve delay
+                setTimeout(() => {
+                    importExcelModal.style.display = 'none';
+                    notyf.success(result.message || 'Productos importados correctamente');
+                    
+                    // Recargar la página para ver los cambios
+                    location.reload();
+                }, 1000);
+                
+            } else {
+                const error = await response.json();
+                throw new Error(error.error || 'Error al importar los productos');
+            }
+        } catch (error) {
+            document.querySelector('.import-progress').style.display = 'none';
+            notyf.error('Error al importar: ' + error.message);
+            console.error('Import error:', error);
+        }
     }
 
     // ============================================
@@ -425,6 +580,65 @@
         }
     });
 
+    // Eventos para importar/exportar Excel
+    if (exportExcelBtn) {
+        exportExcelBtn.addEventListener('click', exportToExcel);
+    }
+    
+    if (importExcelBtn && importExcelModal) {
+        importExcelBtn.addEventListener('click', () => {
+            importExcelModal.style.display = 'flex';
+            // Resetear formulario
+            importExcelForm.reset();
+            document.querySelector('.import-progress').style.display = 'none';
+        });
+    }
+    
+    if (closeImportModalBtn) {
+        closeImportModalBtn.addEventListener('click', () => {
+            importExcelModal.style.display = 'none';
+        });
+    }
+    
+    if (cancelImportBtn) {
+        cancelImportBtn.addEventListener('click', () => {
+            importExcelModal.style.display = 'none';
+        });
+    }
+    
+    window.addEventListener('click', (event) => {
+        if (event.target === importExcelModal) {
+            importExcelModal.style.display = 'none';
+        }
+    });
+    
+    if (downloadTemplateLink) {
+        downloadTemplateLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            downloadTemplate();
+        });
+    }
+    
+    if (importExcelForm) {
+        importExcelForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const fileInput = document.getElementById('excel-file');
+            const overwriteCheckbox = document.getElementById('overwrite-products');
+            
+            if (!fileInput.files.length) {
+                notyf.error('Por favor selecciona un archivo Excel');
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            formData.append('overwrite', overwriteCheckbox.checked);
+            
+            await importFromExcel(formData);
+        });
+    }
+
     // Eventos para editar y eliminar productos
     document.querySelectorAll('.action-btn.edit').forEach(btn => {
         btn.addEventListener('click', async () => {
@@ -647,6 +861,8 @@
         if (event.key === 'Escape' && document.getElementById('addCategoryModal').style.display === 'flex') {
             document.getElementById('addCategoryModal').style.display = 'none';
         }
+        if (event.key === 'Escape' && document.getElementById('importExcelModal').style.display === 'flex') {
+            document.getElementById('importExcelModal').style.display = 'none';
+        }
     });
 })();
-

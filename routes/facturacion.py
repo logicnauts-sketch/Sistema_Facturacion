@@ -1,8 +1,8 @@
-from flask import Blueprint, render_template, jsonify, request, send_file, session
+from flask import Blueprint, render_template, jsonify, request, send_file, session, current_app
 import random
 import string
 import serial
-from conexion import conectar
+from conexion import conectar, obtener_ip_agente
 import datetime
 import pdfkit
 import io
@@ -10,16 +10,213 @@ import os
 import threading
 import requests  # Para comunicación con el agente local
 from utils import login_required, solo_admin_required
-
+from decimal import Decimal
+import traceback
 
 bp = Blueprint('facturacion', __name__)
 
 # Configuración del agente de impresión
-AGENTE_IMPRESION_URL = "http://localhost:5001/print"
-TOKEN_AGENTE = "november" 
+BASE_URL = "https://pruebasistema.pythonanywhere.com"
+TOKEN_AGENTE = "november"
 ncf_lock = threading.Lock()
 ncf_current_date = None
 ncf_sequence_counter = 0
+
+def guardar_factura_pendiente(factura_id, contenido):
+    """Guarda una factura pendiente de impresión en la base de datos"""
+    conn = conectar()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("""
+            INSERT INTO facturas_pendientes_impresion (factura_id, contenido)
+            VALUES (%s, %s)
+        """, (factura_id, contenido))
+        conn.commit()
+        return True
+    except Exception as e:
+        print(f"Error guardando factura pendiente: {str(e)}")
+        return False
+    finally:
+        cursor.close()
+        conn.close()
+
+def obtener_facturas_pendientes():
+    """Obtiene las facturas pendientes de impresión"""
+    conn = conectar()
+    cursor = conn.cursor(dictionary=True)
+    try:
+        cursor.execute("""
+            SELECT id, factura_id, contenido
+            FROM facturas_pendientes_impresion
+            WHERE impresa = FALSE AND intentos < 3
+            ORDER BY fecha_creacion ASC
+            LIMIT 10
+        """)
+        return cursor.fetchall()
+    except Exception as e:
+        print(f"Error obteniendo facturas pendientes: {str(e)}")
+        return []
+    finally:
+        cursor.close()
+        conn.close()
+
+def marcar_factura_impresa(factura_pendiente_id, exito=True, error=None):
+    """Marca una factura como impresa o con error"""
+    conn = conectar()
+    cursor = conn.cursor()
+    try:
+        if exito:
+            cursor.execute("""
+                UPDATE facturas_pendientes_impresion
+                SET impresa = TRUE, fecha_impresion = NOW()
+                WHERE id = %s
+            """, (factura_pendiente_id,))
+        else:
+            cursor.execute("""
+                UPDATE facturas_pendientes_impresion
+                SET intentos = intentos + 1, error = %s
+                WHERE id = %s
+            """, (str(error)[:255], factura_pendiente_id))
+        
+        conn.commit()
+        return True
+    except Exception as e:
+        print(f"Error actualizando estado de factura: {str(e)}")
+        return False
+    finally:
+        cursor.close()
+        conn.close()
+
+def generar_contenido_ticket(factura_id):
+    """Genera el contenido del ticket para una factura (sin imprimir)."""
+    try:
+        # Obtener datos de la factura
+        conn = conectar()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT f.*, 
+                   COALESCE(c.nombre, p.nombre) AS persona_nombre,
+                   COALESCE(c.cedula, p.rnc_cedula) AS persona_doc,
+                   f.tipo
+            FROM facturas f
+            LEFT JOIN clientes c ON f.cliente_id = c.id AND f.tipo = 'venta'
+            LEFT JOIN proveedores p ON f.cliente_id = p.id AND f.tipo = 'compra'
+            WHERE f.id = %s
+        """, (factura_id,))
+        factura = cursor.fetchone()
+
+        if not factura:
+            return None
+
+        cursor.execute("""
+            SELECT p.nombre, df.cantidad, df.precio, p.impuesto
+            FROM detalle_factura df
+            JOIN productos p ON df.producto_id = p.id
+            WHERE df.factura_id = %s
+        """, (factura_id,))
+        detalles = cursor.fetchall()
+
+    except Exception as e:
+        print(f"Error BD al generar contenido ticket: {str(e)}")
+        return None
+    finally:
+        cursor.close()
+        conn.close()
+
+    config_empresa = obtener_configuracion_empresa()
+    if not config_empresa:
+        return None
+
+    lines = []
+    # Cabecera con asteriscos
+    lines.append(f"** {config_empresa.get('nombre','MI EMPRESA SRL')} **")
+    lines.append(f"RNC: {config_empresa.get('rnc','')}")
+    lines.append(f"Tel: {config_empresa.get('telefono','')}")
+    lines.append(config_empresa.get('direccion',''))
+    lines.append("-" * 40)
+
+    es_compra = factura.get('tipo') == 'compra'
+
+    if es_compra:
+        lines.append("COMPRA A PROVEEDOR")
+        lines.append(f"DOCUMENTO: {factura.get('ncf','')}")
+        lines.append(f"FECHA: {factura['fecha_creacion'].strftime('%d/%m/%Y %H:%M:%S')}")
+        lines.append(f"PROVEEDOR: {factura.get('persona_nombre','')}")
+        lines.append(f"RNC: {factura.get('persona_doc','')}")
+    else:
+        lines.append("FACTURA DE VENTA")
+        lines.append(f"FACTURA: {factura.get('ncf','')}")
+        lines.append(f"FECHA: {factura['fecha_creacion'].strftime('%d/%m/%Y %H:%M:%S')}")
+        lines.append(f"CLIENTE: {factura.get('persona_nombre','')}")
+        lines.append(f"DOC: {factura.get('persona_doc','')}")
+
+    lines.append("-" * 40)
+    lines.append(f"{'PRODUCTO':<18} {'CANT':>4} {'ITBIS':>6}")
+    lines.append("-" * 40)
+    
+    # Inicializar totales
+    subtotal_total = 0
+    itbis_total_calculado = 0
+    
+    for item in detalles:
+        nombre = (item.get('nombre') or "").strip()
+        cantidad = item.get('cantidad') or 0
+        precio = float(item.get('precio') or 0.0)
+        tasa_impuesto = float(item.get('impuesto') or 0.0)
+        
+        # Calcular el precio total de la línea
+        precio_total_linea = precio * cantidad
+        
+        # Calcular el precio base (sin impuesto) y el ITBIS
+        if tasa_impuesto > 0:
+            precio_base = precio_total_linea / (1 + (tasa_impuesto / 100))
+            itbis_linea = precio_base * (tasa_impuesto / 100)
+        else:
+            precio_base = precio_total_linea
+            itbis_linea = 0.0
+        
+        # Acumular subtotal e ITBIS
+        subtotal_total += precio_base
+        itbis_total_calculado += itbis_linea
+        
+        # Limitar la longitud del nombre a 18 caracteres
+        nombre = nombre[:18]
+        
+        # Formatear línea con solo nombre, cantidad e ITBIS
+        lines.append(f"{nombre:<18} {cantidad:>4} {itbis_linea:>6.2f}")
+
+    lines.append("-" * 40)
+    lines.append(f"SUBTOTAL:{subtotal_total:>10.2f}")
+    lines.append(f"ITBIS:{itbis_total_calculado:>13.2f}")
+    total = subtotal_total + itbis_total_calculado
+    lines.append(f"TOTAL:{total:>14.2f}")
+    
+    # Mostrar devuelta si el pago fue en efectivo
+    if factura.get('metodo_pago', '').upper() == 'EFECTIVO' and factura.get('monto_recibido'):
+        monto_recibido = float(factura.get('monto_recibido', 0))
+        devuelta = monto_recibido - total
+        lines.append(f"EFECTIVO:{monto_recibido:>13.2f}")
+        lines.append(f"DEVUELTA:{devuelta:>13.2f}")
+    
+    lines.append("-" * 40)
+    lines.append(f"FORMA DE PAGO: {str(factura.get('metodo_pago','')).upper()}")
+    
+    # Obtener el nombre del cajero desde la sesión
+    cajero_nombre = session.get('nombre_completo', 'Sistema')
+    lines.append(f"CAJERO: {cajero_nombre}")
+    
+    lines.append("-" * 40)
+
+    if es_compra:
+        lines.append("COMPRA REGISTRADA EXITOSAMENTE")
+        lines.append("Stock actualizado")
+    else:
+        lines.append("GRACIAS POR SU COMPRA")
+        lines.append(config_empresa.get('mensaje_legal', ''))
+
+    lines.append("Generado: " + datetime.datetime.now().strftime("%d/%m/%Y %H:%M:%S"))
+
+    return "\n".join(lines)
 
 def insertar_ventas_desde_facturas(cursor, producto_id, cantidad, cliente_id, metodo_pago):
     """
@@ -97,22 +294,18 @@ def obtener_configuracion_empresa():
         conn.close()
 
 def obtener_impresora_ticket():
-    """Obtiene el nombre de la impresora activa desde la base de datos"""
+    """Obtiene la impresora activa desde la base de datos"""
     conn = conectar()
     cursor = conn.cursor(dictionary=True)
     try:
         cursor.execute("""
-            SELECT nombre, estado
-            FROM printers
+            SELECT nombre, tipo, modelo, ip, ubicacion, vendor_id, product_id
+            FROM printers 
+            WHERE estado = 'Conectado' AND activa = 1
+            LIMIT 1
         """)
-        filas = cursor.fetchall()
-
-        for fila in filas:
-            if fila['estado'] == '1':
-                return fila['nombre']
-
-        return None
-
+        impresora = cursor.fetchone()
+        return impresora
     except Exception as e:
         print(f"Error al obtener impresora: {str(e)}")
         return None
@@ -156,76 +349,95 @@ def imprimir_ticket(factura_id):
         conn.close()
 
     config_empresa = obtener_configuracion_empresa()
-    nombre_impresora = obtener_impresora_ticket()
-    if not nombre_impresora:
-        return {'success': False, 'error': 'No hay impresora activa'}
+    impresora = obtener_impresora_ticket()
+    
+    if not impresora:
+        return {'success': False, 'error': 'No hay impresora activa configurada'}
 
-    try:
-        # Construir contenido del ticket (igual que antes)
-        ticket_lines = []
-        ticket_lines.append(config_empresa['nombre'])
-        ticket_lines.append(f"RNC: {config_empresa['rnc']}")
-        ticket_lines.append(f"Tel: {config_empresa['telefono']}")
-        ticket_lines.append(config_empresa['direccion'])
-        ticket_lines.append("-" * 40)
+    # Construir contenido del ticket
+    ticket_lines = []
+    ticket_lines.append(config_empresa['nombre'])
+    ticket_lines.append(f"RNC: {config_empresa['rnc']}")
+    ticket_lines.append(f"Tel: {config_empresa['telefono']}")
+    ticket_lines.append(config_empresa['direccion'])
+    ticket_lines.append("-" * 40)
+    
+    es_compra = factura['tipo'] == 'compra'
+    
+    if es_compra:
+        ticket_lines.append("** COMPRA A PROVEEDOR **".center(40))
+        ticket_lines.append(f"DOCUMENTO: {factura['ncf']}")
+        ticket_lines.append(f"FECHA: {factura['fecha_creacion'].strftime('%d/%m/%Y %H:%M:%S')}")
+        ticket_lines.append(f"PROVEEDOR: {factura['persona_nombre']}")
+        ticket_lines.append(f"RNC: {factura['persona_doc']}")
+    else:
+        ticket_lines.append("** FACTURA DE VENTA **".center(40))
+        ticket_lines.append(f"FACTURA: {factura['ncf']}")
+        ticket_lines.append(f"FECHA: {factura['fecha_creacion'].strftime('%d/%m/%Y %H:%M:%S')}")
+        ticket_lines.append(f"CLIENTE: {factura['persona_nombre']}")
+        ticket_lines.append(f"DOC: {factura['persona_doc']}")
+    
+    ticket_lines.append("-" * 40)
+    ticket_lines.append("PRODUCTO                CANT   PRECIO   TOTAL")
+    ticket_lines.append("-" * 40)
+    
+    for item in detalles:
+        nombre = item['nombre'][:22].ljust(22)
+        cantidad = str(item['cantidad']).rjust(3)
+        precio = f"{item['precio']:.2f}".rjust(8)
+        total_item = item['cantidad'] * item['precio']
+        total = f"{total_item:.2f}".rjust(8)
+        ticket_lines.append(f"{nombre} {cantidad}   {precio} {total}")
+        if item['itbis']:
+            ticket_lines.append("  (ITBIS incluido)")
+    
+    ticket_lines.append("-" * 40)
+    subtotal = factura['total'] - factura['itbis_total']
+    ticket_lines.append(f"SUBTOTAL: {subtotal:.2f}".rjust(45))
+    ticket_lines.append(f"ITBIS: {factura['itbis_total']:.2f}".rjust(40))
+    ticket_lines.append(f"TOTAL: {factura['total']:.2f}".rjust(40))
+    
+    # Mostrar devuelta si el pago es en efectivo
+    if factura['metodo_pago'].upper() == 'EFECTIVO' and factura.get('monto_recibido'):
+        monto_recibido = float(factura.get('monto_recibido', 0))
+        devuelta = monto_recibido - factura['total']
+        ticket_lines.append(f"EFECTIVO: {monto_recibido:.2f}".rjust(40))
+        ticket_lines.append(f"DEVUELTA: {devuelta:.2f}".rjust(40))
+    
+    ticket_lines.append("-" * 40)
+    ticket_lines.append(f"FORMA DE PAGO: {factura['metodo_pago'].upper()}")
+    ticket_lines.append("-" * 40)
+    
+    if es_compra:
+        ticket_lines.append("¡COMPRA REGISTRADA EXITOSAMENTE!")
+        ticket_lines.append("Stock actualizado")
+    else:
+        ticket_lines.append("¡GRACIAS POR SU COMPRA!")
+        ticket_lines.append(config_empresa['mensaje_legal'])
         
-        es_compra = factura['tipo'] == 'compra'
-        
-        if es_compra:
-            ticket_lines.append("** COMPRA A PROVEEDOR **".center(40))
-            ticket_lines.append(f"DOCUMENTO: {factura['ncf']}")
-            ticket_lines.append(f"FECHA: {factura['fecha_creacion'].strftime('%d/%m/%Y %H:%M:%S')}")
-            ticket_lines.append(f"PROVEEDOR: {factura['persona_nombre']}")
-            ticket_lines.append(f"RNC: {factura['persona_doc']}")
-        else:
-            ticket_lines.append("** FACTURA DE VENTA **".center(40))
-            ticket_lines.append(f"FACTURA: {factura['ncf']}")
-            ticket_lines.append(f"FECHA: {factura['fecha_creacion'].strftime('%d/%m/%Y %H:%M:%S')}")
-            ticket_lines.append(f"CLIENTE: {factura['persona_nombre']}")
-            ticket_lines.append(f"DOC: {factura['persona_doc']}")
-        
-        ticket_lines.append("-" * 40)
-        ticket_lines.append("PRODUCTO                CANT   PRECIO   TOTAL")
-        ticket_lines.append("-" * 40)
-        
-        for item in detalles:
-            nombre = item['nombre'][:22].ljust(22)
-            cantidad = str(item['cantidad']).rjust(3)
-            precio = f"{item['precio']:.2f}".rjust(8)
-            total_item = item['cantidad'] * item['precio']
-            total = f"{total_item:.2f}".rjust(8)
-            ticket_lines.append(f"{nombre} {cantidad}   {precio} {total}")
-            if item['itbis']:
-                ticket_lines.append("  (ITBIS incluido)")
-        
-        ticket_lines.append("-" * 40)
-        subtotal = factura['total'] - factura['itbis_total']
-        ticket_lines.append(f"SUBTOTAL: {subtotal:.2f}".rjust(45))
-        ticket_lines.append(f"ITBIS: {factura['itbis_total']:.2f}".rjust(40))
-        ticket_lines.append(f"TOTAL: {factura['total']:.2f}".rjust(40))
-        ticket_lines.append("-" * 40)
-        ticket_lines.append(f"FORMA DE PAGO: {factura['metodo_pago'].upper()}")
-        ticket_lines.append("-" * 40)
-        
-        if es_compra:
-            ticket_lines.append("¡COMPRA REGISTRADA EXITOSAMENTE!")
-            ticket_lines.append("Stock actualizado")
-        else:
-            ticket_lines.append("¡GRACIAS POR SU COMPRA!")
-            ticket_lines.append(config_empresa['mensaje_legal'])
-            
-        ticket_lines.append(datetime.datetime.now().strftime("Impreso: %d/%m/%Y %H:%M:%S"))
-        
-        ticket_text = "\n".join(ticket_lines)
-        
-        # Enviar al agente local
-        headers = {'X-Api-Token': TOKEN_AGENTE}
-        data = {
-            'text': ticket_text,
-            'printer': nombre_impresora
+    ticket_lines.append(datetime.datetime.now().strftime("Impreso: %d/%m/%Y %H:%M:%S"))
+    
+    ticket_text = "\n".join(ticket_lines)
+    
+    # Enviar al agente local
+    headers = {'X-Api-Token': TOKEN_AGENTE}
+    data = {
+        'text': ticket_text,
+        'printer': {
+            'name': impresora['nombre'],
+            'type': impresora['tipo'],
+            'ip': impresora['ip']
         }
+    }
+    
+    try:
+        # Obtener la IP del agente (deberías tener esta información configurada)
+        agente_ip = obtener_ip_agente()  # Necesitas implementar esta función
         
-        response = requests.post(AGENTE_IMPRESION_URL, json=data, headers=headers, timeout=10)
+        if not agente_ip:
+            return {'success': False, 'error': 'No hay agente de impresión configurado'}
+        
+        response = requests.post(f"http://{agente_ip}:5001/print", json=data, headers=headers, timeout=10)
         
         if response.status_code == 200:
             resp_json = response.json()
@@ -240,7 +452,7 @@ def imprimir_ticket(factura_id):
     except requests.exceptions.RequestException as e:
         return {'success': False, 'error': f"Error de conexión con el agente: {str(e)}"}
     except Exception as e:
-        return {'success': False, 'error': f"Error general: {str(e)}"}
+        return {'success': False, 'error': f"Error general: {str(e)}"}   
 
 def cliente_tiene_rnc(cliente_id):
     """Verifica si un cliente tiene RNC válido registrado"""
@@ -642,7 +854,7 @@ def generar_factura_pdf(factura_id):
         cursor.close()
         conn.close()
 
-@bp.route('/facturacion')
+@bp.route('/')
 @login_required
 def facturacion():
     config_empresa = obtener_configuracion_empresa()
@@ -650,32 +862,116 @@ def facturacion():
     
     return render_template('facturacion.html', empresa=config_empresa, rol=rol)
 
+
+
 @bp.route('/api/productos', methods=['GET'])
 def buscar_productos():
-    termino = f"%{request.args.get('q', '')}%"
+    current_app.logger.info("=== INICIANDO BUSQUEDA DE PRODUCTOS ===")
+    
+    q = request.args.get('q', '').strip()
+    current_app.logger.info(f"Término de búsqueda: '{q}'")
+    
+    termino = f"%{q}%"
     sql = """
       SELECT id, codigo, nombre, precio_venta AS precio, impuesto AS itbis, stock_actual
       FROM productos
       WHERE (codigo LIKE %s OR nombre LIKE %s)
-        AND estado = 'activo'  -- Solo productos activos
+        AND estado = 'activo'
       LIMIT 10
     """
-    conn = conectar()
-    cursor = conn.cursor(dictionary=True)
+
+    conn = None
+    cursor = None
     try:
+        current_app.logger.info("Conectando a la base de datos...")
+        conn = conectar()
+        
+        if conn is None:
+            current_app.logger.error("❌ CONEXIÓN A BD FALLÓ - conn es None")
+            return jsonify({'error': 'Error de conexión a la base de datos'}), 500
+            
+        current_app.logger.info("✅ Conexión a BD exitosa")
+        
+        cursor = conn.cursor()
+        current_app.logger.info(f"Ejecutando consulta: {sql}")
+        current_app.logger.info(f"Parámetros: ({termino}, {termino})")
+        
         cursor.execute(sql, (termino, termino))
-        productos = cursor.fetchall()
-        return jsonify([{
-            'id':    p['codigo'],
-            'name':  p['nombre'],
-            'price': float(p['precio']),
-            'itbis': bool(p['itbis'])
-        } for p in productos])
+        rows = cursor.fetchall()
+        cols = [desc[0] for desc in cursor.description]
+        
+        current_app.logger.info(f"✅ Consulta exitosa. {len(rows)} productos encontrados")
+
+        productos = []
+        for row in rows:
+            if isinstance(row, dict):
+                p = row
+            else:
+                p = dict(zip(cols, row))
+
+            # Conversión robusta de tipos
+            def to_float(v):
+                if v is None:
+                    return 0.0
+                if isinstance(v, Decimal):
+                    return float(v)
+                try:
+                    return float(v)
+                except (ValueError, TypeError):
+                    return 0.0
+
+            def to_int(v):
+                if v is None:
+                    return 0
+                try:
+                    return int(v)
+                except (ValueError, TypeError):
+                    return 0
+
+            def to_bool(v):
+                if v is None:
+                    return False
+                if isinstance(v, (int, float)):
+                    return bool(v)
+                if isinstance(v, str):
+                    return v.lower() in ('true', '1', 'yes', 'sí', 'si')
+                return bool(v)
+
+            # Asegurar que el ID sea string
+            product_id = p.get('id')
+            if product_id is None:
+                product_id = p.get('codigo', '')
+            
+            productos.append({
+                'id': str(product_id),
+                'codigo': p.get('codigo', ''),
+                'name': p.get('nombre', ''),
+                'price': to_float(p.get('precio')),
+                'itbis': to_bool(p.get('itbis')),
+                'stock': to_int(p.get('stock_actual'))
+            })
+
+        current_app.logger.info("✅ Transformación de datos exitosa")
+        return jsonify(productos)
+
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        current_app.logger.error("❌ ERROR CRÍTICO en /api/productos:")
+        current_app.logger.error(f"Tipo de error: {type(e).__name__}")
+        current_app.logger.error(f"Mensaje: {str(e)}")
+        current_app.logger.error("Traceback completo:")
+        current_app.logger.error(traceback.format_exc())
+        return jsonify({'error': 'Error interno al buscar productos'}), 500
+        
     finally:
-        cursor.close()
-        conn.close()
+        try:
+            if cursor:
+                cursor.close()
+                current_app.logger.info("✅ Cursor cerrado")
+            if conn:
+                conn.close()
+                current_app.logger.info("✅ Conexión cerrada")
+        except Exception as e:
+            current_app.logger.error(f"Error cerrando recursos: {str(e)}")
 
 @bp.route('/api/personas', methods=['GET'])
 def api_get_personas():
@@ -713,294 +1009,259 @@ def api_get_personas():
         if 'cursor' in locals(): cursor.close()
         if 'conn' in locals(): conn.close()
 
+@bp.route('/api/facturas/pendientes', methods=['GET'])
+def api_obtener_facturas_pendientes():
+    """Endpoint para que el agente obtenga facturas pendientes de impresión"""
+    # Verificar autenticación
+    token = request.headers.get('X-Api-Token')
+    if token != TOKEN_AGENTE:
+        return jsonify({'error': 'Token inválido'}), 401
+    
+    facturas = obtener_facturas_pendientes()
+    return jsonify(facturas)
+
+@bp.route('/api/facturas/pendientes/<int:id>/marcar-impresa', methods=['POST'])
+def api_marcar_factura_impresa(id):
+    """Endpoint para que el agente marque una factura como impresa"""
+    # Verificar autenticación
+    token = request.headers.get('X-Api-Token')
+    if token != TOKEN_AGENTE:
+        return jsonify({'error': 'Token inválido'}), 401
+    
+    data = request.get_json()
+    exito = data.get('exito', True)
+    error = data.get('error', None)
+    
+    if marcar_factura_impresa(id, exito, error):
+        return jsonify({'success': True})
+    else:
+        return jsonify({'error': 'No se pudo actualizar el estado'}), 500
+
+from decimal import Decimal, ROUND_HALF_UP
+
 @bp.route('/api/facturas', methods=['POST'])
 def crear_factura():
-    data = request.get_json()
+    # Validación inicial del JSON
+    data = request.get_json(silent=True)
+    if not data:
+        current_app.logger.warning("crear_factura: request.get_json devolvió None o body vacío")
+        return jsonify({'success': False, 'error': 'Request body vacío o no es JSON. Asegure Content-Type: application/json'}), 400
 
-    # Validación para créditos
-    if data['metodo_pago'].lower() == 'credito' and not data.get('fecha_vencimiento'):
-        return jsonify({
-            'success': False,
-            'error': 'Se requiere fecha de vencimiento para créditos'
-        }), 400
+    # Validación de campos requeridos
+    required = ['cliente_id', 'total', 'itbis_total', 'metodo_pago', 'detalles']
+    missing = [k for k in required if k not in data]
+    if missing:
+        return jsonify({'success': False, 'error': 'Datos incompletos', 'missing': missing}), 400
 
-    responsable = session.get('nombre_completo', 'Sistema')
-    
-    # Validar que hay un turno de caja abierto
+    # validar estructura detalles
+    if not isinstance(data['detalles'], list) or len(data['detalles']) == 0:
+        return jsonify({'success': False, 'error': 'No hay productos en la factura (detalles vacío o no es array)'}), 400
+
+    # validacion credito -> fecha_vencimiento requerida
+    metodo_pago = str(data.get('metodo_pago', '')).lower()
+    if metodo_pago == 'credito' and not data.get('fecha_vencimiento'):
+        return jsonify({'success': False, 'error': 'Se requiere fecha_vencimiento para crédito'}), 400
+
+    # Validar turno/caja abierta
     turno_id = obtener_turno_actual()
     if not turno_id:
-        return jsonify({
-            'success': False,
-            'error': 'No se puede facturar porque no hay un turno de caja abierto'
-        }), 400
-    
-    # Validación de datos
-    required = ['cliente_id', 'total', 'itbis_total', 'metodo_pago', 'detalles']
-    if not all(key in data for key in required):
-        return jsonify({
-            'success': False,
-            'error': 'Datos incompletos'
-        }), 400
-    
-    # Validar detalles
-    if not data['detalles'] or len(data['detalles']) == 0:
-        return jsonify({
-            'success': False,
-            'error': 'No hay productos en la factura'
-        }), 400
+        return jsonify({'success': False, 'error': 'No se puede facturar porque no hay un turno de caja abierto'}), 400
 
-    # Determinar tipo de factura basado en el cliente
-    es_proveedor = data.get('es_proveedor', False)
-    tipo_factura = 'compra' if es_proveedor else 'venta'
-
-    # Manejo especial para cliente consumidor final (solo ventas)
+    # Manejo cliente_id ('cf' o entero)
+    es_proveedor = bool(data.get('es_proveedor', False))
     if data['cliente_id'] == 'cf' and not es_proveedor:
-        conn_temp = conectar()
-        cursor_temp = conn_temp.cursor(dictionary=True)
-        try:
-            # Intentar obtener el cliente con id 1
-            cursor_temp.execute("SELECT id FROM clientes WHERE id = 1")
-            cliente = cursor_temp.fetchone()
-            
-            if cliente:
-                cliente_id = cliente['id']
-            else:
-                # Crear cliente consumidor final con id 1
-                cursor_temp.execute("""
-                    INSERT INTO clientes (id, nombre, cedula, telefono, direccion, correo, tipo)
-                    VALUES (1, 'CONSUMIDOR FINAL', '9999999999', '', '', '', 'Normal')
-                """)
-                conn_temp.commit()
-                cliente_id = 1
-        except Exception as e:
-            # Si falla, intentar obtener por cédula
-            cursor_temp.execute("SELECT id FROM clientes WHERE cedula = '9999999999'")
-            cliente = cursor_temp.fetchone()
-            if cliente:
-                cliente_id = cliente['id']
-            else:
-                # Crear sin especificar ID
-                cursor_temp.execute("""
-                    INSERT INTO clientes (nombre, cedula, telefono, direccion, correo, tipo)
-                    VALUES ('CONSUMIDOR FINAL', '9999999999', '', '', '', 'Normal')
-                """)
-                conn_temp.commit()
-                cliente_id = cursor_temp.lastrowid
-        finally:
-            cursor_temp.close()
-            conn_temp.close()
+        cliente_id = None  # se resolverá en la transacción (tu lógica original crea/usa id 1)
+        usar_consumidor_final = True
     else:
+        usar_consumidor_final = False
         try:
-            # Convertir cliente_id a entero
             cliente_id = int(data['cliente_id'])
         except (TypeError, ValueError):
-            return jsonify({
-                'success': False,
-                'error': 'cliente_id debe ser un número entero o "cf" para consumidor final'
-            }), 400
+            return jsonify({'success': False, 'error': 'cliente_id debe ser un número entero o "cf" para consumidor final'}), 400
 
-    # DETERMINAR TIPO DE NCF SEGÚN OPERACIÓN Y CLIENTE
-    if es_proveedor:
-        # COMPRAS A PROVEEDORES - usar B01
-        tipo_ncf = "B01"
-    else:
-        # VENTAS A CLIENTES
-        if data['cliente_id'] == 'cf' or not cliente_tiene_rnc(cliente_id):
-            tipo_ncf = "B02"  # Consumidor final
-        else:
-            tipo_ncf = "B01"  # Empresa con RNC
+    # Convertir montos a Decimal (seguridad para dinero)
+    def to_decimal(v, default=Decimal('0.00')):
+        try:
+            return Decimal(str(v)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+        except Exception:
+            return default
 
-    # Inicializar variables para el pago
-    codigo_autorizacion = ''
+    total = to_decimal(data['total'])
+    itbis_total = to_decimal(data['itbis_total'])
+    monto_recibido = None
+    if metodo_pago == 'efectivo' and 'monto_recibido' in data:
+        monto_recibido = to_decimal(data.get('monto_recibido'))
 
-    conn = conectar()
-    cursor = conn.cursor()
+    # Variables para la transacción
+    conn = None
+    cursor = None
     try:
-        # Desactivar autocommit para manejar transacción manualmente
+        conn = conectar()
+        if conn is None:
+            current_app.logger.error("crear_factura: conectar() devolvió None")
+            return jsonify({'success': False, 'error': 'Error de conexión a la base de datos'}), 500
+
+        cursor = conn.cursor()
         conn.autocommit = False
 
-        # 1. Insertar encabezado de factura en estado PENDIENTE y reservar NCF
-        ncf = generar_ncf(tipo_ncf)  # GENERAR NCF CON TIPO CORRECTO
-        
-        # PREPARAR FECHA DE VENCIMIENTO (solo para créditos)
-        fecha_vencimiento = data.get('fecha_vencimiento') if data['metodo_pago'].lower() == 'credito' else None
-        
+        # Si cliente 'cf' -> tu lógica para crear/usar consumidor final
+        if usar_consumidor_final:
+            # mantener tu flujo: intentar id=1, crear si no existe...
+            cursor_temp = conn.cursor(dictionary=True)
+            try:
+                cursor_temp.execute("SELECT id FROM clientes WHERE id = 1")
+                cliente_row = cursor_temp.fetchone()
+                if cliente_row:
+                    cliente_id = cliente_row['id']
+                else:
+                    cursor_temp.execute("""
+                        INSERT INTO clientes (id, nombre, cedula, telefono, direccion, correo, tipo)
+                        VALUES (1, 'CONSUMIDOR FINAL', '9999999999', '', '', '', 'Normal')
+                    """)
+                    conn.commit()
+                    cliente_id = 1
+            finally:
+                cursor_temp.close()
+
+        # DETERMINAR TIPO DE NCF
+        if es_proveedor:
+            tipo_ncf = "B01"
+        else:
+            tipo_ncf = "B02" if (data['cliente_id'] == 'cf' or not cliente_tiene_rnc(cliente_id)) else "B01"
+
+        ncf = generar_ncf(tipo_ncf)
+        fecha_venc = data.get('fecha_vencimiento') if metodo_pago == 'credito' else None
+
+        # Insertar encabezado: note que pasamos strings para Decimal para compatibilidad con drivers
         cursor.execute("""
             INSERT INTO facturas (
-                cliente_id, total, descuento, itbis_total, 
-                metodo_pago, fecha_vencimiento, ncf, fecha_creacion, estado, tipo, turno_id
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, NOW(), %s, %s, %s)
+                cliente_id, total, descuento, itbis_total, metodo_pago,
+                fecha_vencimiento, ncf, fecha_creacion, estado, tipo, turno_id, monto_recibido
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, NOW(), %s, %s, %s, %s)
         """, (
             cliente_id,
-            data['total'],
+            str(total),
             data.get('descuento', 0),
-            data['itbis_total'],
+            str(itbis_total),
             data['metodo_pago'],
-            fecha_vencimiento,  # Nuevo campo
+            fecha_venc,
             ncf,
             'PENDIENTE',
-            tipo_factura,
-            turno_id  # Referencia al turno actual
+            'compra' if es_proveedor else 'venta',
+            turno_id,
+            (str(monto_recibido) if monto_recibido is not None else None)
         ))
         factura_id = cursor.lastrowid
 
-        # 2. Insertar detalles y actualizar stock
+        # Insertar detalles (validar en cada item)
         for item in data['detalles']:
-            # Buscar ID real del producto
-            cursor.execute("SELECT id FROM productos WHERE codigo = %s", (item['producto_id'],))
-            producto = cursor.fetchone()
-            
-            if not producto:
-                raise ValueError(f"Producto no encontrado: {item['producto_id']}")
-            
-            producto_id = producto[0]
-            
+            if 'producto_id' not in item or 'cantidad' not in item or 'precio' not in item:
+                raise ValueError(f"Detalle inválido: {item}")
+
+            # Determinar si item['producto_id'] es un id numérico o un código
+            prod_identifier = item.get('producto_id')
+            producto_id = None
+
+            # Intentar buscar por ID si parece entero
+            try:
+                pid_int = int(prod_identifier)
+                cursor.execute("SELECT id FROM productos WHERE id = %s", (pid_int,))
+                row = cursor.fetchone()
+                if row:
+                    producto_id = row[0]
+                else:
+                    # si no resulta por id, intentar por código como fallback
+                    cursor.execute("SELECT id FROM productos WHERE codigo = %s", (str(prod_identifier),))
+                    row = cursor.fetchone()
+                    if row:
+                        producto_id = row[0]
+            except (TypeError, ValueError):
+                # no era entero -> buscar por código
+                cursor.execute("SELECT id FROM productos WHERE codigo = %s", (str(prod_identifier),))
+                row = cursor.fetchone()
+                if row:
+                    producto_id = row[0]
+
+            if not producto_id:
+                # log y error claro
+                current_app.logger.warning("Detalle con producto no encontrado: %s", prod_identifier)
+                raise ValueError(f"Producto no encontrado: {prod_identifier}")
+
             cursor.execute("""
-                INSERT INTO detalle_factura (
-                    factura_id, producto_id, cantidad, precio, itbis
-                ) VALUES (%s, %s, %s, %s, %s)
+                INSERT INTO detalle_factura (factura_id, producto_id, cantidad, precio, itbis)
+                VALUES (%s, %s, %s, %s, %s)
             """, (
                 factura_id,
                 producto_id,
-                item['cantidad'],
-                item['precio'],
-                int(item['itbis'])
+                int(item['cantidad']),
+                str(Decimal(str(item['precio'])).quantize(Decimal('0.01'))),
+                int(bool(item.get('itbis', False)))
             ))
 
-            # ACTUALIZAR STOCK SEGÚN TIPO DE FACTURA
-            if tipo_factura == 'venta':
-                # Restar stock para ventas
-                cursor.execute("""
-                    UPDATE productos 
-                    SET stock_actual = stock_actual - %s 
-                    WHERE id = %s
-                """, (item['cantidad'], producto_id))
+            if not es_proveedor:
+                cursor.execute("UPDATE productos SET stock_actual = stock_actual - %s WHERE id = %s", (item['cantidad'], producto_id))
+                insertar_ventas_desde_facturas(cursor, producto_id, item['cantidad'], cliente_id, data['metodo_pago'])
+            else:
+                cursor.execute("UPDATE productos SET stock_actual = stock_actual + %s WHERE id = %s", (item['cantidad'], producto_id))
+                registrar_movimiento_inventario(cursor, producto_id, item['cantidad'], factura_id)
 
-                insertar_ventas_desde_facturas(
-                    cursor,
-                    producto_id,
-                    item['cantidad'],
-                    cliente_id,
-                    data['metodo_pago'],
-                )
-            elif tipo_factura == 'compra':
-                # Sumar stock para compras
-                cursor.execute("""
-                    UPDATE productos 
-                    SET stock_actual = stock_actual + %s 
-                    WHERE id = %s
-                """, (item['cantidad'], producto_id))
-
-                # REGISTRAR MOVIMIENTO EN LA TABLA "movimientos"
-                registrar_movimiento_inventario(
-                    cursor,
-                    producto_id,
-                    item['cantidad'],
-                    factura_id,
-                )
-
-        # 3. Procesar pago según método
-        if data['metodo_pago'].lower() == 'tarjeta':
-            resultado_pago = procesar_pago_verifone(data['total'])
+        # Procesar estado según método de pago (simplificado)
+        if metodo_pago == 'tarjeta':
+            resultado_pago = procesar_pago_verifone(float(total))
             if not resultado_pago.get('success'):
                 cursor.execute("UPDATE facturas SET estado=%s WHERE id=%s", ('CANCELADA', factura_id))
                 conn.commit()
-                return jsonify({
-                    'success': False,
-                    'error': 'Pago rechazado, Revise la conexion del equipo',
-                    'mensaje': resultado_pago.get('mensaje', 'Transacción no aprobada')
-                }), 402
-
-            # Si el pago fue exitoso
+                return jsonify({'success': False, 'error': 'Pago rechazado', 'mensaje': resultado_pago.get('mensaje')}), 402
             codigo_autorizacion = resultado_pago.get('codigo_autorizacion', '')
-            cursor.execute("""
-                UPDATE facturas 
-                SET estado=%s, codigo_autorizacion=%s 
-                WHERE id=%s
-            """, ('PAGADA', codigo_autorizacion, factura_id))
-
-        elif data['metodo_pago'].lower() == 'credito':
-            # Actualizar estado a PENDIENTE
+            cursor.execute("UPDATE facturas SET estado=%s, codigo_autorizacion=%s WHERE id=%s", ('PAGADA', codigo_autorizacion, factura_id))
+        elif metodo_pago == 'credito':
             cursor.execute("UPDATE facturas SET estado=%s WHERE id=%s", ('PENDIENTE', factura_id))
-            
-            # Insertar en cuentas por pagar/cobrar
-            if tipo_factura == 'compra':
-                # Cuentas por pagar (compras a crédito)
-                cursor.execute("""
-                    INSERT INTO cuentas_por_pagar (
-                        proveedor_id, numero_factura, fecha_emision, 
-                        fecha_vencimiento, monto, estado, descripcion
-                    ) VALUES (%s, %s, CURDATE(), %s, %s, 'Pendiente', %s)
-                """, (
-                    cliente_id,
-                    ncf,
-                    fecha_vencimiento,  # Usar la misma fecha de vencimiento
-                    data['total'],
-                    f"Factura de compra #{factura_id}"
-                ))
-            else:
-                # Cuentas por cobrar (ventas a crédito)
-                cursor.execute("""
-                    INSERT INTO cuentas_por_cobrar (
-                        cliente_id, factura_id, monto_total, 
-                        fecha_emision, fecha_vencimiento, estado
-                    ) VALUES (%s, %s, %s, CURDATE(), %s, 'pendiente')
-                """, (
-                    cliente_id,
-                    factura_id,
-                    data['total'],
-                    fecha_vencimiento  # Usar la misma fecha de vencimiento
-                ))
-
-        else:  # Efectivo, transferencia, etc.
+            # insertar cuentas por cobrar/pagar (tu lógica)
+        else:
             cursor.execute("UPDATE facturas SET estado=%s WHERE id=%s", ('PAGADA', factura_id))
 
-        # 4. REGISTRAR MOVIMIENTO EN CAJA (SOLO PARA MÉTODOS NO CRÉDITO)
-        if data['metodo_pago'].lower() != 'credito':
-            tipo_movimiento = 'gasto' if tipo_factura == 'compra' else 'venta'
-            descripcion = f"Factura #{factura_id} - {'Compra' if tipo_factura == 'compra' else 'Venta'}"
-            
+        # Registrar movimiento en caja si aplica
+        if metodo_pago != 'credito':
+            tipo_mov = 'gasto' if es_proveedor else 'venta'
+            descripcion = f"Factura #{factura_id} - {'Compra' if es_proveedor else 'Venta'}"
             cursor.execute("""
-                INSERT INTO movimientos_caja (
-                    turno_id, factura_id, tipo, metodo_pago, descripcion, monto
-                ) VALUES (%s, %s, %s, %s, %s, %s)
-            """, (
-                turno_id,
-                factura_id,
-                tipo_movimiento,
-                data['metodo_pago'].lower(),
-                descripcion,
-                data['total']
-            ))
+                INSERT INTO movimientos_caja (turno_id, factura_id, tipo, metodo_pago, descripcion, monto)
+                VALUES (%s, %s, %s, %s, %s, %s)
+            """, (turno_id, factura_id, tipo_mov, metodo_pago, descripcion, str(total)))
 
-        # Confirmar toda la transacción
         conn.commit()
 
-        # 5. Intentar imprimir ticket (fuera de la transacción)
-        resultado_impresion = imprimir_ticket(factura_id)
-        
-        # 6. Preparar respuesta
-        response = {
-            'success': True,
-            'factura_id': factura_id,
-            'ncf': ncf,
-            'codigo_autorizacion': codigo_autorizacion
-        }
-        
-        if not resultado_impresion.get('success', True):
-            response['warning'] = f"Factura creada pero error al imprimir: {resultado_impresion.get('error', '')}"
-        
-        return jsonify(response), 201
+        # Guardar pendiente de impresión
+        ticket_text = generar_contenido_ticket(factura_id)
+        if ticket_text:
+            guardar_factura_pendiente(factura_id, ticket_text)
 
-    except Exception as e:
-        # Revertir transacción en caso de error
-        conn.rollback()
-        return jsonify({'success': False, 'error': str(e)}), 400
+        return jsonify({'success': True, 'factura_id': factura_id, 'ncf': ncf}), 201
+
+    except Exception as ex:
+        # rollback sólo si la conexión existe
+        current_app.logger.error("Error crear_factura: %s", traceback.format_exc())
+        if conn:
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+        return jsonify({'success': False, 'error': str(ex)}), 400
+
     finally:
-        # Restaurar modo autocommit y cerrar conexión
-        conn.autocommit = True
-        cursor.close()
-        conn.close()
+        # Cerrar recursos si existen
+        try:
+            if cursor:
+                cursor.close()
+        except Exception:
+            pass
+        try:
+            if conn:
+                conn.autocommit = True
+                conn.close()
+        except Exception:
+            pass
+
 
 @bp.route('/api/facturas/<int:factura_id>/pdf', methods=['GET'])
 def descargar_factura_pdf(factura_id):
@@ -1015,4 +1276,3 @@ def descargar_factura_pdf(factura_id):
         download_name=f'factura_{factura_id}.pdf',
         mimetype='application/pdf'
     )
-

@@ -1,36 +1,14 @@
-// Datos para gráficos
-const incomeData = {
-    labels: ['Ventas de Productos', 'Servicios', 'Otros Ingresos'],
-    datasets: [{
-        data: [76, 20, 4],
-        backgroundColor: [
-            '#10b981',
-            '#3b82f6',
-            '#8b5cf6'
-        ],
-        borderWidth: 0
-    }]
+// Variables globales
+let categories = {
+    Ingreso: [],
+    Egreso: []
 };
 
-const expensesData = {
-    labels: ['Inventario', 'Servicios', 'Nómina', 'Mantenimiento', 'Impuestos'],
-    datasets: [{
-        data: [35, 23, 21, 13, 8],
-        backgroundColor: [
-            '#ef4444',
-            '#f97316',
-            '#eab308',
-            '#8b5cf6',
-            '#10b981'
-        ],
-        borderWidth: 0
-    }]
-};
-
-// Categorías para cada tipo de transacción
-const categories = {
-    Ingreso: ['Ventas', 'Servicios', 'Inversiones', 'Préstamos', 'Otros Ingresos'],
-    Egreso: ['Servicios', 'Nómina', 'Mantenimiento', 'Inventario', 'Impuestos', 'Marketing', 'Gastos Generales']
+let transactions = [];
+let financialSummary = {
+    total_income: 0,
+    total_expenses: 0,
+    net_profit: 0
 };
 
 // Referencias a elementos del modal
@@ -43,6 +21,110 @@ const transactionType = document.getElementById('transactionType');
 const transactionCategory = document.getElementById('transactionCategory');
 const transactionForm = document.getElementById('transactionForm');
 const transactionsTable = document.getElementById('transactionsTable');
+
+// Función para cargar datos desde el backend
+async function loadData() {
+    try {
+        await loadFinancialSummary();
+        await loadChartsData();
+        await loadCategories();
+        await loadTransactions();
+        updateUI();
+    } catch (error) {
+        console.error('Error cargando datos:', error);
+        alert('Error al cargar los datos. Por favor, recarga la página.');
+    }
+}
+
+// Cargar resumen financiero
+async function loadFinancialSummary() {
+    const response = await fetch('/api/financial-summary');
+    if (response.ok) {
+        financialSummary = await response.json();
+    } else {
+        throw new Error('Error al cargar el resumen financiero');
+    }
+}
+
+// Cargar datos para gráficos
+async function loadChartsData() {
+    const response = await fetch('/api/financial-charts');
+    if (response.ok) {
+        const chartsData = await response.json();
+        initCharts(chartsData.income, chartsData.expenses);
+    } else {
+        throw new Error('Error al cargar datos para gráficos');
+    }
+}
+
+// Cargar categorías
+async function loadCategories() {
+    const response = await fetch('/api/categories');
+    if (response.ok) {
+        categories = await response.json();
+    } else {
+        throw new Error('Error al cargar categorías');
+    }
+}
+
+// Cargar transacciones
+async function loadTransactions() {
+    const response = await fetch('/api/transactions');
+    if (response.ok) {
+        transactions = await response.json();
+    } else {
+        throw new Error('Error al cargar transacciones');
+    }
+}
+
+// Actualizar la interfaz con los datos cargados
+function updateUI() {
+    updateSummaryCards();
+    renderTransactions();
+    addActionListeners();
+}
+
+// Actualizar tarjetas de resumen
+function updateSummaryCards() {
+    document.querySelector('.card:first-child .card-value').textContent = 
+        `RD$ ${financialSummary.total_income.toLocaleString('es-ES', {minimumFractionDigits: 2})}`;
+    
+    document.querySelector('.card:nth-child(2) .card-value').textContent = 
+        `RD$ ${financialSummary.total_expenses.toLocaleString('es-ES', {minimumFractionDigits: 2})}`;
+    
+    document.querySelector('.card:last-child .card-value').textContent = 
+        `RD$ ${financialSummary.net_profit.toLocaleString('es-ES', {minimumFractionDigits: 2})}`;
+}
+
+// Renderizar transacciones en la tabla
+function renderTransactions() {
+    // Limpiar tabla
+    transactionsTable.innerHTML = '';
+    
+    // Agregar cada transacción
+    transactions.forEach(transaction => {
+        const newRow = document.createElement('tr');
+        newRow.innerHTML = `
+            <td>${transaction.date}</td>
+            <td><span class="transaction-tag ${transaction.type === 'Ingreso' ? 'income-tag' : 'expense-tag'}">${transaction.type}</span></td>
+            <td>${transaction.category}</td>
+            <td>${transaction.concept}</td>
+            <td class="amount ${transaction.type === 'Ingreso' ? 'income-text' : 'expense-text'}">RD$ ${Math.abs(transaction.amount).toLocaleString('es-ES', {minimumFractionDigits: 2})}</td>
+            <td>${transaction.responsible}</td>
+            <td>
+                <div class="actions">
+                    <div class="action-btn edit-btn">
+                        <i class="fas fa-edit"></i>
+                    </div>
+                    <div class="action-btn delete-btn">
+                        <i class="fas fa-trash"></i>
+                    </div>
+                </div>
+            </td>
+        `;
+        transactionsTable.appendChild(newRow);
+    });
+}
 
 // Función para abrir el modal
 function openModal() {
@@ -80,7 +162,7 @@ transactionType.addEventListener('change', function() {
 });
 
 // Guardar nueva transacción
-saveTransactionBtn.addEventListener('click', function() {
+saveTransactionBtn.addEventListener('click', async function() {
     if (!transactionForm.checkValidity()) {
         alert('Por favor, complete todos los campos requeridos.');
         return;
@@ -93,62 +175,37 @@ saveTransactionBtn.addEventListener('click', function() {
     const amount = parseFloat(document.getElementById('transactionAmount').value).toFixed(2);
     const responsible = document.getElementById('transactionResponsible').value;
     
-    // Formatear la fecha para mostrar
-    const formattedDate = new Date(date).toLocaleDateString('es-ES', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric'
-    });
-    
-    // Crear nueva fila en la tabla
-    const newRow = document.createElement('tr');
-    newRow.innerHTML = `
-        <td>${formattedDate}</td>
-        <td><span class="transaction-tag ${type === 'Ingreso' ? 'income-tag' : 'expense-tag'}">${type}</span></td>
-        <td>${category}</td>
-        <td>${concept}</td>
-        <td class="amount ${type === 'Ingreso' ? 'income-text' : 'expense-text'}">RD$ ${parseFloat(amount).toLocaleString('es-ES', {minimumFractionDigits: 2})}</td>
-        <td>${responsible}</td>
-        <td>
-            <div class="actions">
-                <div class="action-btn edit-btn">
-                    <i class="fas fa-edit"></i>
-                </div>
-                <div class="action-btn delete-btn">
-                    <i class="fas fa-trash"></i>
-                </div>
-            </div>
-        </td>
-    `;
-    
-    // Añadir la nueva fila al principio de la tabla
-    transactionsTable.insertBefore(newRow, transactionsTable.firstChild);
-    
-    // Actualizar resumen (simulado)
-    if (type === 'Ingreso') {
-        const incomeCard = document.querySelector('.card:first-child .card-value');
-        const currentIncome = parseFloat(incomeCard.textContent.replace('RD$', '').replace(/,/g, ''));
-        incomeCard.textContent = `RD$ ${(currentIncome + parseFloat(amount)).toLocaleString('es-ES', {minimumFractionDigits: 2})}`;
-    } else {
-        const expenseCard = document.querySelector('.card:nth-child(2) .card-value');
-        const currentExpense = parseFloat(expenseCard.textContent.replace('RD$', '').replace(/,/g, ''));
-        expenseCard.textContent = `RD$ ${(currentExpense + parseFloat(amount)).toLocaleString('es-ES', {minimumFractionDigits: 2})}`;
+    try {
+        const response = await fetch('/api/add-transaction', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                date: date,
+                type: type,
+                category: category,
+                concept: concept,
+                amount: amount,
+                responsible: responsible
+            })
+        });
         
-        // Actualizar utilidad neta
-        const netProfitCard = document.querySelector('.card:last-child .card-value');
-        const income = parseFloat(document.querySelector('.card:first-child .card-value').textContent.replace('RD$', '').replace(/,/g, ''));
-        const expenses = parseFloat(document.querySelector('.card:nth-child(2) .card-value').textContent.replace('RD$', '').replace(/,/g, ''));
-        netProfitCard.textContent = `RD$ ${(income - expenses).toLocaleString('es-ES', {minimumFractionDigits: 2})}`;
+        if (response.ok) {
+            // Recargar todos los datos después de agregar la transacción
+            await loadData();
+            // Mostrar mensaje de éxito
+            alert(`¡Transacción agregada exitosamente!\nConcepto: ${concept}\nMonto: RD$ ${parseFloat(amount).toLocaleString('es-ES', {minimumFractionDigits: 2})}`);
+            // Cerrar el modal
+            closeModal();
+        } else {
+            const error = await response.json();
+            alert(`Error: ${error.error}`);
+        }
+    } catch (error) {
+        console.error('Error agregando transacción:', error);
+        alert('Error al agregar la transacción. Por favor, intente nuevamente.');
     }
-    
-    // Mostrar mensaje de éxito
-    alert(`¡Transacción agregada exitosamente!\nConcepto: ${concept}\nMonto: RD$ ${parseFloat(amount).toLocaleString('es-ES', {minimumFractionDigits: 2})}`);
-    
-    // Cerrar el modal y resetear el formulario
-    closeModal();
-    
-    // Añadir eventos a los nuevos botones de acción
-    addActionListeners();
 });
 
 // Función para añadir listeners a los botones de acción
@@ -169,37 +226,15 @@ function addActionListeners() {
             const type = row.children[1].querySelector('.transaction-tag').textContent;
             
             if(confirm(`¿Está seguro que desea eliminar la transacción: ${concept}?`)) {
-                // Actualizar resumen (simulado)
-                if (type === 'Ingreso') {
-                    const incomeCard = document.querySelector('.card:first-child .card-value');
-                    const currentIncome = parseFloat(incomeCard.textContent.replace('RD$', '').replace(/,/g, ''));
-                    incomeCard.textContent = `RD$ ${(currentIncome - amount).toLocaleString('es-ES', {minimumFractionDigits: 2})}`;
-                } else {
-                    const expenseCard = document.querySelector('.card:nth-child(2) .card-value');
-                    const currentExpense = parseFloat(expenseCard.textContent.replace('RD$', '').replace(/,/g, ''));
-                    expenseCard.textContent = `RD$ ${(currentExpense - amount).toLocaleString('es-ES', {minimumFractionDigits: 2})}`;
-                }
-                
-                // Actualizar utilidad neta
-                const netProfitCard = document.querySelector('.card:last-child .card-value');
-                const income = parseFloat(document.querySelector('.card:first-child .card-value').textContent.replace('RD$', '').replace(/,/g, ''));
-                const expenses = parseFloat(document.querySelector('.card:nth-child(2) .card-value').textContent.replace('RD$', '').replace(/,/g, ''));
-                netProfitCard.textContent = `RD$ ${(income - expenses).toLocaleString('es-ES', {minimumFractionDigits: 2})}`;
-                
-                row.remove();
+                // En una implementación real, aquí haríamos una llamada al backend para eliminar
+                alert('Funcionalidad de eliminación no implementada en este ejemplo');
             }
         });
     });
 }
 
-// Inicializar gráficos al cargar
-document.addEventListener('DOMContentLoaded', function() {
-    initCharts();
-    addActionListeners();
-});
-
-// Inicializar gráficos
-function initCharts() {
+// Inicializar gráficos con datos reales
+function initCharts(incomeData, expensesData) {
     // Gráfico de ingresos
     const incomeCtx = document.getElementById('incomeChart').getContext('2d');
     new Chart(incomeCtx, {
@@ -331,4 +366,9 @@ document.querySelectorAll('.tab').forEach(tab => {
             }
         });
     });
+});
+
+// Inicializar la aplicación al cargar
+document.addEventListener('DOMContentLoaded', function() {
+    loadData();
 });

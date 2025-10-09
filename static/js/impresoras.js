@@ -154,6 +154,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 <div class="printer-header">
                     <div class="printer-name">${printer.nombre}</div>
                     <div class="printer-type">${printer.tipo}</div>
+                    ${printer.activa ? '<div class="active-badge">ACTIVA</div>' : ''}
                 </div>
                 
                 <div class="printer-details">
@@ -185,6 +186,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     <button class="action-btn btn-delete" data-id="${printer.id}">
                         <i class="fas fa-trash"></i> Eliminar
                     </button>
+                    <button class="action-btn btn-activate" data-id="${printer.id}">
+                        <i class="fas fa-check-circle"></i> ${printer.activa ? 'Desactivar' : 'Activar'}
+                    </button>
                 </div>
             `;
             printersContainer.appendChild(card);
@@ -201,6 +205,30 @@ document.addEventListener('DOMContentLoaded', function() {
         
         document.querySelectorAll('.btn-delete').forEach(btn => {
             btn.addEventListener('click', () => deletePrinter(btn.dataset.id));
+        });
+        
+        document.querySelectorAll('.btn-activate').forEach(btn => {
+            btn.addEventListener('click', () => toggleActivePrinter(btn.dataset.id));
+        });
+    }
+
+    // Función para activar/desactivar impresora
+    function toggleActivePrinter(id) {
+        fetch(`/impresoras/api/${id}/toggle-active`, {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showConfirmation();
+                loadPrinters();
+            } else {
+                alert('Error al cambiar estado de la impresora');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Ocurrió un error al cambiar el estado');
         });
     }
     
@@ -301,3 +329,4 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 });
+

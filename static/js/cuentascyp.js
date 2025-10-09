@@ -54,11 +54,44 @@ document.addEventListener('DOMContentLoaded', function() {
     // Obtener datos del servidor
     async function fetchAccounts() {
         try {
+            // Usamos window.API_URL que se define en el HTML
+            const API_URL = window.API_URL || '/api/cuentas';
+            console.log('Fetching from:', API_URL); // Para depuración
+            
             const response = await fetch(API_URL);
-            accountsData = await response.json();
+
+            if (!response.ok) {
+                // intentar leer el body (por si el backend devuelve { error: "mensaje" })
+                let text;
+                try {
+                    text = await response.text();
+                    console.error('API error body:', text);
+                } catch (err) {
+                    console.error('No se pudo leer body de error:', err);
+                }
+                throw new Error(`Error HTTP: ${response.status} - ${text || ''}`);
+            }
+
+            
+            const data = await response.json();
+            
+            // Asegurarnos de que siempre trabajamos con un array
+            if (Array.isArray(data)) {
+                accountsData = data;
+            } else if (data && Array.isArray(data.accounts)) {
+                // Si la respuesta es un objeto que contiene un array 'accounts'
+                accountsData = data.accounts;
+            } else if (data && Array.isArray(data.items)) {
+                // Otra posible estructura común
+                accountsData = data.items;
+            } else {
+                // Si no es un array, crear uno vacío y loguear el error
+                console.error('La API no devolvió un array:', data);
+                accountsData = [];
+            }
         } catch (error) {
             console.error('Error fetching accounts:', error);
-            accountsData = [];
+            accountsData = []; // Asegurar que siempre es un array
         }
     }
 
@@ -81,7 +114,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Crear fila de tabla
     function createTableRow(account) {
         const row = document.createElement('tr');
-        row.className = 'account-row hover:bg-gray-50';
+        row.className = 'table-row account-row';
         row.dataset.id = account.id;
         
         // Calcular estado real basado en fechas
@@ -91,15 +124,17 @@ document.addEventListener('DOMContentLoaded', function() {
         const actualStatus = isOverdue ? 'overdue' : account.status;
         
         const statusClass = {
-            pending: 'bg-yellow-100 text-yellow-800',
-            paid: 'bg-green-100 text-green-800',
-            overdue: 'bg-red-100 text-red-800'
+            pending: 'status-badge status-pending',
+            paid: 'status-badge status-paid',
+            overdue: 'status-badge status-overdue',
+            partial: 'status-badge status-partial'
         }[actualStatus] || '';
         
         const statusText = {
             pending: 'Pendiente',
             paid: 'Pagado',
-            overdue: 'Vencido'
+            overdue: 'Vencido',
+            partial: 'Parcial'
         }[actualStatus] || actualStatus;
         
         const amountFormatted = formatCurrency(account.amount);
@@ -107,44 +142,44 @@ document.addEventListener('DOMContentLoaded', function() {
         const dueDateFormatted = formatDate(account.dueDate);
         
         row.innerHTML = `
-            <td class="px-6 py-4 whitespace-nowrap">
-                <div class="flex items-center">
-                    <div class="${account.type === 'receivable' ? 'bg-blue-600' : 'bg-red-600'} text-white w-8 h-8 rounded-full flex items-center justify-center">
-                        <span class="text-xs">${account.name.substring(0, 2)}</span>
+            <td class="table-cell">
+                <div class="account-info">
+                    <div class="account-avatar ${account.type === 'receivable' ? 'account-avatar-blue' : 'account-avatar-red'}">
+                        ${account.name.substring(0, 2)}
                     </div>
-                    <div class="ml-4">
-                        <div class="text-sm font-medium text-gray-900">${account.name}</div>
-                        <div class="text-sm text-gray-500">${account.document}</div>
+                    <div class="account-details">
+                        <div class="account-name">${account.name}</div>
+                        <div class="account-document">${account.document}</div>
                     </div>
                 </div>
             </td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+            <td class="table-cell">
                 ${amountFormatted}
             </td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+            <td class="table-cell">
                 ${issueDateFormatted}
             </td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+            <td class="table-cell">
                 ${dueDateFormatted}
             </td>
-            <td class="px-6 py-4 whitespace-nowrap">
-                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusClass}">
+            <td class="table-cell">
+                <span class="${statusClass}">
                     ${statusText}
                 </span>
             </td>
-            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                <button class="text-blue-600 hover:text-blue-900 mr-3 tooltip view-details" data-tooltip="Ver detalles" data-id="${account.id}">
+            <td class="table-cell text-right">
+                <button class="action-button view tooltip view-details" data-tooltip="Ver detalles" data-id="${account.id}">
                     <i class="fas fa-eye"></i>
                 </button>
                 ${actualStatus !== 'paid' ? `
-                <button class="text-green-600 hover:text-green-900 mr-3 tooltip register-payment" data-tooltip="${account.type === 'receivable' ? 'Registrar pago' : 'Realizar pago'}" data-id="${account.id}">
+                <button class="action-button payment tooltip register-payment" data-tooltip="${account.type === 'receivable' ? 'Registrar pago' : 'Realizar pago'}" data-id="${account.id}">
                     <i class="fas fa-money-bill-wave"></i>
                 </button>
-                <button class="text-purple-600 hover:text-purple-900 tooltip send-reminder" data-tooltip="Enviar recordatorio" data-id="${account.id}">
+                <button class="action-button reminder tooltip send-reminder" data-tooltip="Enviar recordatorio" data-id="${account.id}">
                     <i class="fas fa-bell"></i>
                 </button>
                 ` : `
-                <button class="text-green-600 hover:text-green-900 mr-3 tooltip view-history" data-tooltip="Ver historial" data-id="${account.id}">
+                <button class="action-button view tooltip view-history" data-tooltip="Ver historial" data-id="${account.id}">
                     <i class="fas fa-history"></i>
                 </button>
                 `}
@@ -237,9 +272,9 @@ document.addEventListener('DOMContentLoaded', function() {
         const endItem = Math.min(currentPage * itemsPerPage, totalItems);
         
         paginationInfo.innerHTML = `
-            Mostrando <span class="font-medium">${startItem}</span> a 
-            <span class="font-medium">${endItem}</span> de 
-            <span class="font-medium">${totalItems}</span> resultados
+            Mostrando <span class="pagination-number">${startItem}</span> a 
+            <span class="pagination-number">${endItem}</span> de 
+            <span class="pagination-number">${totalItems}</span> resultados
         `;
         
         // Limpiar paginación existente
@@ -248,9 +283,10 @@ document.addEventListener('DOMContentLoaded', function() {
         // Crear botón Anterior
         const prevButton = document.createElement('a');
         prevButton.href = '#';
-        prevButton.className = `relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 ${currentPage === 1 ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`;
-        prevButton.innerHTML = '<span class="sr-only">Anterior</span><i class="fas fa-chevron-left"></i>';
-        prevButton.onclick = () => {
+        prevButton.className = `pagination-link ${currentPage === 1 ? 'disabled' : ''}`;
+        prevButton.innerHTML = '<i class="fas fa-chevron-left"></i>';
+        prevButton.onclick = (e) => {
+            e.preventDefault();
             if (currentPage > 1) {
                 currentPage--;
                 renderTable();
@@ -262,9 +298,10 @@ document.addEventListener('DOMContentLoaded', function() {
         for (let i = 1; i <= totalPages; i++) {
             const pageButton = document.createElement('a');
             pageButton.href = '#';
-            pageButton.className = `relative inline-flex items-center px-4 py-2 border text-sm font-medium ${i === currentPage ? 'bg-blue-50 text-blue-600 border-blue-500' : 'bg-white text-gray-500 hover:bg-gray-50'}`;
+            pageButton.className = `pagination-link ${i === currentPage ? 'active' : ''}`;
             pageButton.textContent = i;
-            pageButton.onclick = () => {
+            pageButton.onclick = (e) => {
+                e.preventDefault();
                 currentPage = i;
                 renderTable();
             };
@@ -274,9 +311,10 @@ document.addEventListener('DOMContentLoaded', function() {
         // Crear botón Siguiente
         const nextButton = document.createElement('a');
         nextButton.href = '#';
-        nextButton.className = `relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 ${currentPage === totalPages ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`;
-        nextButton.innerHTML = '<span class="sr-only">Siguiente</span><i class="fas fa-chevron-right"></i>';
-        nextButton.onclick = () => {
+        nextButton.className = `pagination-link ${currentPage === totalPages ? 'disabled' : ''}`;
+        nextButton.innerHTML = '<i class="fas fa-chevron-right"></i>';
+        nextButton.onclick = (e) => {
+            e.preventDefault();
             if (currentPage < totalPages) {
                 currentPage++;
                 renderTable();
@@ -340,7 +378,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
         
-        // Actualizar DOM - CORREGIDO: se eliminó el RD$ duplicado
+        // Actualizar DOM
         document.getElementById('totalReceivable').textContent = formatCurrency(summary.totalReceivable);
         document.getElementById('pendingReceivable').textContent = formatCurrency(summary.pendingReceivable);
         document.getElementById('overdueReceivable').textContent = formatCurrency(summary.overdueReceivable);
@@ -354,7 +392,7 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('next15DaysDue').textContent = formatCurrency(summary.next15DaysDue);
     }
 
-    // Mostrar detalles de la cuenta (con mejor estilo y centrado)
+    // Mostrar detalles de la cuenta
     function showAccountDetails(accountId) {
         const account = accountsData.find(a => a.id === accountId);
         if (!account) return;
@@ -370,46 +408,41 @@ document.addEventListener('DOMContentLoaded', function() {
         const statusText = {
             pending: 'Pendiente',
             paid: 'Pagado',
-            overdue: 'Vencido'
+            overdue: 'Vencido',
+            partial: 'Parcial'
         }[actualStatus] || actualStatus;
         
         modalTitle.textContent = `Detalles: ${account.document}`;
         
         modalContent.innerHTML = `
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <div class="bg-gray-50 p-4 rounded-lg">
-                    <h4 class="font-semibold mb-3 text-blue-600">Información Básica</h4>
-                    <div class="space-y-2">
-                        <p><span class="font-medium">Tipo:</span> ${typeText}</p>
-                        <p><span class="font-medium">Estado:</span> <span class="px-2 py-1 rounded-full ${actualStatus === 'pending' ? 'bg-yellow-100 text-yellow-800' : actualStatus === 'paid' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">${statusText}</span></p>
-                        <p><span class="font-medium">Monto:</span> ${formatCurrency(account.amount)}</p>
-                        <p><span class="font-medium">Fecha Emisión:</span> ${formatDate(account.issueDate)}</p>
-                        <p><span class="font-medium">Fecha Vencimiento:</span> ${formatDate(account.dueDate)}</p>
-                    </div>
+            <div class="payment-details">
+                <div class="payment-detail">
+                    <h4 class="detail-label">Información Básica</h4>
+                    <p><span class="detail-label">Tipo:</span> ${typeText}</p>
+                    <p><span class="detail-label">Estado:</span> <span class="status-badge ${actualStatus === 'pending' ? 'status-pending' : actualStatus === 'paid' ? 'status-paid' : 'status-overdue'}">${statusText}</span></p>
+                    <p><span class="detail-label">Monto:</span> ${formatCurrency(account.amount)}</p>
+                    <p><span class="detail-label">Fecha Emisión:</span> ${formatDate(account.issueDate)}</p>
+                    <p><span class="detail-label">Fecha Vencimiento:</span> ${formatDate(account.dueDate)}</p>
                 </div>
-                <div class="bg-gray-50 p-4 rounded-lg">
-                    <h4 class="font-semibold mb-3 text-blue-600">${account.type === 'receivable' ? 'Cliente' : 'Proveedor'}</h4>
-                    <div class="space-y-2">
-                        <p><span class="font-medium">Nombre:</span> ${account.name}</p>
-                        <p><span class="font-medium">Documento:</span> ${account.document}</p>
-                        <p><span class="font-medium">Contacto:</span> ${account.contact}</p>
-                        <p><span class="font-medium">Email:</span> ${account.email}</p>
-                        <p><span class="font-medium">Teléfono:</span> ${account.phone}</p>
-                    </div>
+                <div class="payment-detail">
+                    <h4 class="detail-label">${account.type === 'receivable' ? 'Cliente' : 'Proveedor'}</h4>
+                    <p><span class="detail-label">Nombre:</span> ${account.name}</p>
+                    <p><span class="detail-label">Documento:</span> ${account.document}</p>
+                    <p><span class="detail-label">Contacto:</span> ${account.contact}</p>
+                    <p><span class="detail-label">Email:</span> ${account.email}</p>
+                    <p><span class="detail-label">Teléfono:</span> ${account.phone}</p>
                 </div>
             </div>
-            <div class="mt-4 bg-gray-50 p-4 rounded-lg">
-                <h4 class="font-semibold mb-3 text-blue-600">Historial de Transacciones</h4>
-                <div class="p-3">
-                    <p class="text-gray-600">${account.status === 'paid' ? 
-                        '<i class="fas fa-check-circle text-green-500 mr-2"></i> Pago completo realizado' : 
-                        '<i class="fas fa-info-circle text-yellow-500 mr-2"></i> Sin transacciones registradas'}</p>
-                </div>
+            <div class="payment-detail">
+                <h4 class="detail-label">Historial de Transacciones</h4>
+                <p>${account.status === 'paid' ? 
+                    '<i class="fas fa-check-circle text-success"></i> Pago completo realizado' : 
+                    '<i class="fas fa-info-circle"></i> Sin transacciones registradas'}</p>
             </div>
         `;
         
         detailModal.classList.remove('hidden');
-        document.body.style.overflow = 'hidden'; // Evitar scroll en el fondo
+        document.body.style.overflow = 'hidden';
     }
 
     // Abrir modal para realizar pago
@@ -510,10 +543,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     const icon = h.querySelector('i');
                     if (h === header) {
                         icon.className = currentSort.direction === 'asc' 
-                            ? 'fas fa-sort-up ml-1' 
-                            : 'fas fa-sort-down ml-1';
+                            ? 'fas fa-sort-up sort-icon' 
+                            : 'fas fa-sort-down sort-icon';
                     } else {
-                        icon.className = 'fas fa-sort ml-1 text-gray-400';
+                        icon.className = 'fas fa-sort sort-icon';
                     }
                 });
                 
@@ -584,31 +617,6 @@ document.addEventListener('DOMContentLoaded', function() {
         
         startDate.valueAsDate = firstDay;
         endDate.valueAsDate = lastDay;
-        
-        // Aplicar estilo a los inputs de fecha
-        applyDateInputStyles();
-    }
-
-    // Aplicar estilo a los inputs de fecha
-    function applyDateInputStyles() {
-        const dateInputs = document.querySelectorAll('input[type="date"]');
-        dateInputs.forEach(input => {
-            // Crear un div contenedor para el estilo
-            const wrapper = document.createElement('div');
-            wrapper.className = 'relative';
-            
-            // Mover el input al wrapper
-            input.parentNode.insertBefore(wrapper, input);
-            wrapper.appendChild(input);
-            
-            // Agregar ícono de calendario
-            const icon = document.createElement('i');
-            icon.className = 'fas fa-calendar absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 pointer-events-none';
-            wrapper.appendChild(icon);
-            
-            // Aplicar clases de estilo
-            input.className = 'date-input w-full pl-10 pr-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500';
-        });
     }
 
     // Funciones de utilidad
