@@ -869,17 +869,10 @@ def buscar_productos():
     current_app.logger.info("=== INICIANDO BUSQUEDA DE PRODUCTOS ===")
     
     q = request.args.get('q', '').strip()
-    current_app.logger.info(f"Término de búsqueda: '{q}'")
+    exact_match = request.args.get('exact', 'false').lower() == 'true'
     
-    termino = f"%{q}%"
-    sql = """
-      SELECT id, codigo, nombre, precio_venta AS precio, impuesto AS itbis, stock_actual
-      FROM productos
-      WHERE (codigo LIKE %s OR nombre LIKE %s)
-        AND estado = 'activo'
-      LIMIT 10
-    """
-
+    current_app.logger.info(f"Término de búsqueda: '{q}', Búsqueda exacta: {exact_match}")
+    
     conn = None
     cursor = None
     try:
@@ -892,23 +885,81 @@ def buscar_productos():
             
         current_app.logger.info("✅ Conexión a BD exitosa")
         
-        cursor = conn.cursor()
-        current_app.logger.info(f"Ejecutando consulta: {sql}")
-        current_app.logger.info(f"Parámetros: ({termino}, {termino})")
+        cursor = conn.cursor(dictionary=True)
         
-        cursor.execute(sql, (termino, termino))
-        rows = cursor.fetchall()
-        cols = [desc[0] for desc in cursor.description]
+        if q == '':
+            # Si no hay término de búsqueda, devolver productos recientes o todos los activos
+            current_app.logger.info("Búsqueda vacía, devolviendo productos por defecto")
+            sql = """
+              SELECT 
+                  p.id, 
+                  p.codigo, 
+                  p.nombre, 
+                  p.precio_venta AS precio, 
+                  p.impuesto AS itbis, 
+                  p.stock_actual,
+                  COALESCE(c.nombre, 'Sin categoría') AS categoria_nombre
+              FROM productos p
+              LEFT JOIN categorias c ON p.categoria_id = c.id
+              WHERE p.estado = 'activo'
+              ORDER BY p.fecha_actualizacion DESC, p.id DESC
+              LIMIT 15
+            """
+            cursor.execute(sql)
+        elif exact_match:
+            # BÚSQUEDA EXACTA POR CÓDIGO - MEJORADA
+            current_app.logger.info(f"Búsqueda EXACTA por código: {q}")
+            sql = """
+              SELECT 
+                  p.id, 
+                  p.codigo, 
+                  p.nombre, 
+                  p.precio_venta AS precio, 
+                  p.impuesto AS itbis, 
+                  p.stock_actual,
+                  COALESCE(c.nombre, 'Sin categoría') AS categoria_nombre
+              FROM productos p
+              LEFT JOIN categorias c ON p.categoria_id = c.id
+              WHERE (p.codigo = %s OR p.codigo LIKE %s) AND p.estado = 'activo'
+              ORDER BY 
+                CASE WHEN p.codigo = %s THEN 1 ELSE 2 END
+              LIMIT 5
+            """
+            # Buscar coincidencia exacta primero, luego parcial
+            termino_exacto = q
+            termino_like = f"%{q}%"
+            cursor.execute(sql, (termino_exacto, termino_like, termino_exacto))
+        else:
+            # Si hay término de búsqueda, buscar por nombre, código o categoría
+            termino = f"%{q}%"
+            sql = """
+              SELECT 
+                  p.id, 
+                  p.codigo, 
+                  p.nombre, 
+                  p.precio_venta AS precio, 
+                  p.impuesto AS itbis, 
+                  p.stock_actual,
+                  COALESCE(c.nombre, 'Sin categoría') AS categoria_nombre
+              FROM productos p
+              LEFT JOIN categorias c ON p.categoria_id = c.id
+              WHERE (p.codigo LIKE %s OR p.nombre LIKE %s OR c.nombre LIKE %s)
+                AND p.estado = 'activo'
+              ORDER BY 
+                CASE WHEN p.codigo = %s THEN 1 ELSE 2 END,
+                p.nombre
+              LIMIT 15
+            """
+            current_app.logger.info(f"Ejecutando consulta: {sql}")
+            current_app.logger.info(f"Parámetros: ({termino}, {termino}, {termino}, {q})")
+            cursor.execute(sql, (termino, termino, termino, q))
         
-        current_app.logger.info(f"✅ Consulta exitosa. {len(rows)} productos encontrados")
+        productos_data = cursor.fetchall()
+        
+        current_app.logger.info(f"✅ Consulta exitosa. {len(productos_data)} productos encontrados")
 
         productos = []
-        for row in rows:
-            if isinstance(row, dict):
-                p = row
-            else:
-                p = dict(zip(cols, row))
-
+        for p in productos_data:
             # Conversión robusta de tipos
             def to_float(v):
                 if v is None:
@@ -937,21 +988,25 @@ def buscar_productos():
                     return v.lower() in ('true', '1', 'yes', 'sí', 'si')
                 return bool(v)
 
-            # Asegurar que el ID sea string
-            product_id = p.get('id')
-            if product_id is None:
-                product_id = p.get('codigo', '')
+            # Obtener y validar stock_actual
+            stock_actual = p.get('stock_actual')
+            if stock_actual is None:
+                stock_actual = 0
             
-            productos.append({
-                'id': str(product_id),
+            producto = {
+                'id': str(p.get('id', '')),
                 'codigo': p.get('codigo', ''),
-                'name': p.get('nombre', ''),
+                'name': p.get('nombre', '').strip(),
                 'price': to_float(p.get('precio')),
                 'itbis': to_bool(p.get('itbis')),
-                'stock': to_int(p.get('stock_actual'))
-            })
+                'stock': to_int(stock_actual),
+                'categoria': p.get('categoria_nombre', 'Sin categoría')
+            }
+            
+            productos.append(producto)
 
         current_app.logger.info("✅ Transformación de datos exitosa")
+        current_app.logger.info(f"Productos a enviar: {[p['name'] for p in productos]}")
         return jsonify(productos)
 
     except Exception as e:

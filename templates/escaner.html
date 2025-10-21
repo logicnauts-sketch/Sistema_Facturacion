@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lector de Códigos de Barras</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .scanner-area {
+            border: 2px dashed #ccc;
+            padding: 40px;
+            text-align: center;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            background-color: #f9f9f9;
+            transition: all 0.3s;
+        }
+        .scanner-area.active {
+            border-color: #4CAF50;
+            background-color: #e8f5e9;
+        }
+        #codigo-input {
+            width: 100%;
+            padding: 12px;
+            font-size: 18px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            box-sizing: border-box;
+            text-align: center;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            font-size: 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        button.secondary {
+            background-color: #2196F3;
+        }
+        button.secondary:hover {
+            background-color: #0b7dda;
+        }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        #resultado {
+            margin-top: 30px;
+            padding: 15px;
+            border-radius: 4px;
+            background-color: #f0f0f0;
+            display: none;
+        }
+        #codigos-lista {
+            margin-top: 20px;
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 10px;
+        }
+        .codigo-item {
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+        }
+        .codigo-item:last-child {
+            border-bottom: none;
+        }
+        .timestamp {
+            color: #777;
+            font-size: 0.9em;
+        }
+        .status {
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .status.success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .status.error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .instructions {
+            background-color: #e7f3ff;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            font-size: 0.95em;
+        }
+        .producto-info {
+            font-weight: bold;
+            margin-top: 5px;
+            color: #333;
+        }
+        .loading {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Lector de Códigos de Barras</h1>
+        
+        <div class="instructions">
+            <h3>Instrucciones:</h3>
+            <ol>
+                <li>Conecte su escáner de códigos de barras al ordenador</li>
+                <li>Haga clic en el campo de texto o mantenga el cursor en él</li>
+                <li>Escanee un código de barras (el escáner simulará la escritura del código)</li>
+                <li>El código se procesará automáticamente cuando detecte un "Enter"</li>
+            </ol>
+        </div>
+        
+        <div class="scanner-area" id="scanner-area">
+            <h3>Área de Escaneo</h3>
+            <input type="text" id="codigo-input" placeholder="Haga clic aquí y escanee un código" autocomplete="off">
+            <div>
+                <button id="btn-procesar">Procesar Código</button>
+                <button id="btn-limpiar" class="secondary">Limpiar Lista</button>
+            </div>
+        </div>
+        
+        <div id="resultado">
+            <h3>Resultado:</h3>
+            <div id="resultado-texto"></div>
+        </div>
+        
+        <h3>Códigos Escaneados:</h3>
+        <div id="codigos-lista"></div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const codigoInput = document.getElementById('codigo-input');
+            const btnProcesar = document.getElementById('btn-procesar');
+            const btnLimpiar = document.getElementById('btn-limpiar');
+            const resultado = document.getElementById('resultado');
+            const resultadoTexto = document.getElementById('resultado-texto');
+            const codigosLista = document.getElementById('codigos-lista');
+            const scannerArea = document.getElementById('scanner-area');
+            
+            // Cargar códigos existentes al iniciar
+            cargarCodigos();
+            
+            // Enfocar el campo de entrada al cargar la página
+            codigoInput.focus();
+            
+            // Evento para detectar cuando se escribe en el campo
+            codigoInput.addEventListener('input', function() {
+                scannerArea.classList.add('active');
+            });
+            
+            // Evento para detectar cuando se presiona una tecla
+            codigoInput.addEventListener('keydown', function(e) {
+                // Si se presiona Enter, procesar el código
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    procesarCodigo();
+                }
+            });
+            
+            // Evento para el botón procesar
+            btnProcesar.addEventListener('click', procesarCodigo);
+            
+            // Evento para el botón limpiar
+            btnLimpiar.addEventListener('click', function() {
+                if (confirm('¿Está seguro de que desea eliminar todos los códigos escaneados?')) {
+                    limpiarCodigos();
+                }
+            });
+            
+            // Función para procesar el código
+            function procesarCodigo() {
+                const codigo = codigoInput.value.trim();
+                
+                if (codigo === '') {
+                    mostrarResultado('Por favor, escanee un código válido', 'error');
+                    return;
+                }
+                
+                // Mostrar estado de carga
+                setLoadingState(true);
+                
+                // Enviar código al servidor
+                fetch('/escaner/procesar', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ codigo: codigo })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const productoInfo = data.producto ? `<div class="producto-info">Producto: ${data.producto}</div>` : '';
+                        mostrarResultado(`${data.message}${productoInfo}`, 'success');
+                        
+                        // Limpiar campo y recargar lista
+                        codigoInput.value = '';
+                        cargarCodigos();
+                    } else {
+                        mostrarResultado(data.message, 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    mostrarResultado('Error al procesar el código', 'error');
+                })
+                .finally(() => {
+                    setLoadingState(false);
+                    // Quitar clase activa del área de escaneo
+                    setTimeout(() => {
+                        scannerArea.classList.remove('active');
+                    }, 1000);
+                });
+            }
+            
+            // Función para cargar códigos desde el servidor
+            function cargarCodigos() {
+                fetch('/escaner/obtener_codigos')
+                    .then(response => response.json())
+                    .then(data => {
+                        actualizarListaCodigos(data.codigos);
+                    })
+                    .catch(error => {
+                        console.error('Error al cargar códigos:', error);
+                    });
+            }
+            
+            // Función para limpiar códigos en el servidor
+            function limpiarCodigos() {
+                fetch('/escaner/limpiar', {
+                    method: 'POST'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        actualizarListaCodigos([]);
+                        resultado.style.display = 'none';
+                    } else {
+                        alert('Error al limpiar los códigos: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Error al limpiar los códigos');
+                });
+            }
+            
+            // Función para mostrar resultado
+            function mostrarResultado(mensaje, tipo) {
+                resultadoTexto.innerHTML = mensaje;
+                resultadoTexto.className = 'status ' + tipo;
+                resultado.style.display = 'block';
+            }
+            
+            // Función para actualizar la lista de códigos
+            function actualizarListaCodigos(codigos) {
+                codigosLista.innerHTML = '';
+                
+                if (codigos.length === 0) {
+                    codigosLista.innerHTML = '<p style="text-align: center; color: #777;">No hay códigos escaneados</p>';
+                    return;
+                }
+                
+                codigos.forEach(function(item) {
+                    const div = document.createElement('div');
+                    div.className = 'codigo-item';
+                    div.innerHTML = `
+                        <div>
+                            <strong>${item.codigo}</strong>
+                            ${item.producto ? `<div class="producto-info">${item.producto}</div>` : ''}
+                            <div class="timestamp">${item.timestamp}</div>
+                        </div>
+                        <div class="status ${item.procesado ? 'success' : 'error'}">
+                            ${item.procesado ? 'Procesado' : 'Error'}
+                        </div>
+                    `;
+                    codigosLista.appendChild(div);
+                });
+            }
+            
+            // Función para establecer estado de carga
+            function setLoadingState(loading) {
+                if (loading) {
+                    scannerArea.classList.add('loading');
+                    btnProcesar.disabled = true;
+                    btnProcesar.textContent = 'Procesando...';
+                } else {
+                    scannerArea.classList.remove('loading');
+                    btnProcesar.disabled = false;
+                    btnProcesar.textContent = 'Procesar Código';
+                }
+            }
+            
+            // Permitir que el campo de entrada siempre esté enfocado
+            document.addEventListener('click', function() {
+                codigoInput.focus();
+            });
+        });
+    </script>
+</body>
+</html>

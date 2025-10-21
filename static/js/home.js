@@ -11,10 +11,10 @@ const accountingBtn  = document.getElementById('accountingBtn');
 const accountingDropdown = document.getElementById('accountingDropdown');
 const sidebarOverlay = document.querySelector('.sidebar-overlay');
 
-// Estado del sidebar
-let sidebarCollapsed = false;
+// Estado del sidebar - INICIALMENTE COLAPSADO
+let sidebarCollapsed = true;
 
-// Función para alternar el sidebar
+// Función para alternar el sidebar - CORREGIDA
 function toggleSidebar() {
   if (!sidebar) return;
   
@@ -24,7 +24,7 @@ function toggleSidebar() {
     return;
   }
   
-  // Para escritorio
+  // Para escritorio - TOGGLE NORMAL
   sidebarCollapsed = !sidebarCollapsed;
 
   if (sidebarCollapsed) {
@@ -43,6 +43,22 @@ function toggleSidebar() {
     menuIcon.className = sidebarCollapsed ? 'fas fa-bars' : 'fas fa-times';
   }
 }
+
+// Inicializar sidebar como colapsado
+document.addEventListener('DOMContentLoaded', function() {
+  if (sidebar) {
+    sidebarCollapsed = true;
+    sidebar.classList.add('collapsed');
+    sidebar.classList.remove('expanded');
+    if (appContainer) appContainer.classList.add('expanded-content');
+    
+    // Asegurar que el icono del menú sea consistente
+    const menuIcon = menuToggle && menuToggle.querySelector('i');
+    if (menuIcon) {
+      menuIcon.className = 'fas fa-bars';
+    }
+  }
+});
 
 // Listeners para toggles
 if (floatingToggle) floatingToggle.addEventListener('click', toggleSidebar);
@@ -229,59 +245,6 @@ document.addEventListener('click', (e) => {
   }
 });
 
-// --- ROLE-based behaviour ---
-(function handleRoleBehaviour() {
-  const body = document.getElementById('appBody') || document.body;
-  const role = body ? (body.dataset.rol || '') : '';
-  const isAdmin = (role === 'admin' || role === '1');
-
-  const toggleBtn = document.getElementById('sidebar-toggle');
-  const main = document.getElementById('main-content') || document.getElementById('appContainer');
-
-  if (!sidebar) return;
-
-  if (isAdmin) {
-    // admin: expandir por defecto y permitir toggle
-    sidebar.classList.remove('collapsed');
-    sidebar.classList.add('expanded');
-    if (main) main.classList.add('expanded-content');
-
-    if (toggleBtn) {
-      toggleBtn.removeAttribute('aria-disabled');
-      toggleBtn.style.pointerEvents = '';
-      toggleBtn.title = '';
-      if (!toggleBtn.dataset.initialized) {
-        toggleBtn.addEventListener('click', (e) => {
-          e.preventDefault();
-          toggleSidebar();
-        });
-        toggleBtn.dataset.initialized = 'true';
-      }
-    }
-
-  } else {
-    // usuario normal: forzar collapsed y deshabilitar toggle
-    sidebar.classList.add('collapsed');
-    sidebar.classList.remove('expanded');
-    if (main) main.classList.remove('expanded-content');
-
-    if (toggleBtn) {
-      toggleBtn.setAttribute('aria-disabled', 'true');
-      toggleBtn.style.pointerEvents = 'none';
-      toggleBtn.title = 'Acceso restringido';
-    }
-
-    // deshabilitar enlaces marcados con data-role-restricted
-    document.querySelectorAll('[data-role-restricted]').forEach(el => {
-      el.setAttribute('aria-disabled', 'true');
-      el.style.pointerEvents = 'none';
-      el.style.opacity = '0.5';
-      el.setAttribute('tabindex', '-1');
-    });
-  }
-})();
-
-// Función para actualizar datos del dashboard
 // Función para actualizar datos del dashboard
 function updateDashboardData() {
     // Verificar si estamos en la página de dashboard

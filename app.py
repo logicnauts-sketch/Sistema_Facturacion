@@ -1,5 +1,5 @@
 from flask import Flask, send_from_directory
-from routes import home
+from routes import home, escaner
 from routes import clientes
 from routes import proveedores
 from routes import facturacion
@@ -72,6 +72,7 @@ app.register_blueprint(impresora.bp)
 app.register_blueprint(empresa.bp)
 app.register_blueprint(caja.bp)
 app.register_blueprint(configuracion.bp)
+app.register_blueprint(escaner.bp)
 
 
 if __name__ == "__main__":

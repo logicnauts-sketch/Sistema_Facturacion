@@ -1,9 +1,11 @@
 {
-  "BASE_URL": "https://pruebasistema.pythonanywhere.com",
+  "BASE_URL": "https://juniorvapeshop.pythonanywhere.com",
   "API_TOKEN": "november",
   "INTERVALO_CONSULTA": 10,
   "printer_name": "POS-58-Series",
   "modo_impresion": "RAW",
   "encoding_default": "utf-8",
-  "copies_default": 1
+  "copies_default": 1,
+  "auto_start": true,
+  "start_minimized": false
 }

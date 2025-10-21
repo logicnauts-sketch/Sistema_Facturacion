@@ -16,7 +16,7 @@
 
 <body id="appBody" data-rol="{{ session.get('rol', '') }}">
     {% block sidebar %}
-    <aside class="sidebar {% if user_role != 'admin' %}collapsed{% endif %}" id="sidebar">
+    <aside class="sidebar" id="sidebar">
         <div class="sidebar-header">
             <div class="logo">
                 <i class="fas fa-file-invoice-dollar"></i>
@@ -40,6 +40,11 @@
             <a href="{{ url_for('caja.caja') }}" class="menu-item {% if request.path == '/caja' %}active{% endif %}" data-module="caja">
                 <i class="fas fa-cash-register"></i>
                 <span>Caja</span>
+            </a>
+
+            <a href="{{ url_for('escaner.escaner') }}" class="menu-item {% if request.path == '/escaner' %}active{% endif %}" data-module="escaner">
+                <i class="fas fa-cash-register"></i>
+                <span>Escaner</span>
             </a>
             
             <!-- Clientes solo para administradores -->

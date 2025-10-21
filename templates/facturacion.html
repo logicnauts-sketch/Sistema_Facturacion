@@ -2,6 +2,7 @@
 
 {% block title %}Facturación{% endblock %}
 
+
     {% block styles %}
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
@@ -11,154 +12,194 @@
     
 
 {% block content %}
-    <div class="container">
-        <div class="main-layout">
-            <!-- Panel izquierdo: Selector de cliente y productos -->
-            <div class="panel-left">
-                <!-- Selector de cliente -->
-                 {% if session.rol == 'admin' %}
-                <div class="card">
-                    <div class="card-header">
-                        <h2 class="card-title">Cliente/Proveedor</h2>
-                    </div>
+<div class="container">
+    <!-- Agrega esto en tu facturacion.html, preferiblemente al inicio del body -->
+<input type="text" id="always-on-scanner" class="hidden-scanner" autocomplete="off" placeholder="Escáner siempre activo">
 
-                    <div id="client-info">
-                        <div class="client-badge">
-                            <div class="client-content">
-                                <i class="fas fa-user client-icon"></i>
-                                <span>Consumidor Final</span>
-                            </div>
-                            <i class="fas fa-chevron-down dropdown-icon"></i>
-                        </div>
-                    </div>
-                </div>
-                {% endif %}
-
-                <!-- Buscador de productos -->
-                <div class="card">
-                    <div class="card-header">
-                        <h2 class="card-title">Buscador de Productos</h2>
-                    </div>
-
-                    <div class="search-container">
-                        <div class="search-input-group">
-                            <input type="text" id="product-search" class="search-inputf"
-                                placeholder="Ingrese código o nombre de producto...">
-                            <button id="search-btn" class="search-button">
-                                <i class="fas fa-search"></i>
-                            </button>
-                        </div>
-                        <div id="search-suggestions" class="search-suggestions hidden">
-                            <!-- Las sugerencias se cargarán aquí -->
-                        </div>
-                    </div>
+    <div class="main-layout">
+        <!-- Panel izquierdo: Selector de cliente y productos -->
+        <div class="panel-left">
+            <!-- Selector de cliente -->
+            {% if session.rol == 'admin' %}
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Cliente/Proveedor</h2>
                 </div>
 
-                <!-- Tabla de productos -->
-                <div class="card">
-                    <div id="cart-table-container" class="cart-table-container hidden">
-                        <div class="table-wrapper">
-                            <table class="cart-table">
-                                <thead>
-                                    <tr>
-                                        <th>Cantidad</th>
-                                        <th>Descripción</th>
-                                        <th>Precio</th>
-                                        <th>ITBIS (18%)</th>
-                                        <th>Total línea</th>
-                                        <th>Acción</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="cart-items">
-                                    <!-- Los productos se agregarán aquí dinámicamente -->
-                                </tbody>
-                            </table>
+                <div id="client-info">
+                    <div class="client-badge">
+                        <div class="client-content">
+                            <i class="fas fa-user client-icon"></i>
+                            <span>Consumidor Final</span>
                         </div>
-                    </div>
-
-                    <!-- Mensaje cuando el carrito está vacío -->
-                    <div id="empty-cart" class="empty-cart">
-                        <i class="fas fa-shopping-cart empty-cart-icon"></i>
-                        <h3 class="empty-cart-title">Carrito vacío</h3>
-                        <p class="empty-cart-text">Busque productos para comenzar a facturar</p>
+                        <i class="fas fa-chevron-down dropdown-icon"></i>
                     </div>
                 </div>
             </div>
+            {% endif %}
 
-            <!-- Panel derecho: Resumen y pago -->
-            <div class="panel-right">
-                <div class="card summary-container">
-                    <!-- Resumen de venta -->
-                    <div class="card-header">
-                        <h2 class="card-title">Resumen de Venta</h2>
-                    </div>
-                    <div class="card-body">
-                        <div class="summary-item">
-                            <span>Subtotal:</span>
-                            <span id="subtotal" class="summary-value">RD$ 0.00</span>
-                        </div>
+            <!-- Buscador de productos -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Buscador de Productos</h2>
+                </div>
 
-                        <div class="summary-item">
-                            <span>Total ITBIS:</span>
-                            <span id="itbis-total" class="summary-value">RD$ 0.00</span>
-                        </div>
-
-                        <div class="summary-total">
-                            <span>Total general:</span>
-                            <span id="total" class="total-amount">RD$ 0.00</span>
-                        </div>
-                    </div>
-
-                    <!-- Selección de pago -->
-                    <div class="payment-methods"> 
-                        <div class="card-header">
-                            <h2 class="card-title">Método de Pago</h2>
-                        </div>
-                        <div class="card-body">
-                            <div class="payment-grid">
-                                <div class="payment-method" data-method="efectivo">
-                                    <i class="fas fa-money-bill-wave payment-icon payment-green"></i>
-                                    <p class="payment-label">Efectivo</p>
-                                </div>
-                                <div class="payment-method" data-method="tarjeta">
-                                    <i class="fas fa-credit-card payment-icon payment-blue"></i>
-                                    <p class="payment-label">Tarjeta</p>
-                                </div>
-                                <div class="payment-method" data-method="transferencia">
-                                    <i class="fas fa-exchange-alt payment-icon payment-purple"></i>
-                                    <p class="payment-label">Transferencia</p>
-                                </div>
-                                <div class="payment-method" data-method="credito">
-                                    <i class="fas fa-file-invoice-dollar payment-icon payment-orange"></i>
-                                    <p class="payment-label">Crédito</p>
-                                </div>
-                            </div>
-
-                            <div id="cash-input" class="cash-input">
-                                <label class="input-label">Monto recibido:</label>
-                                <input type="text" id="amount-received" class="amount-input" placeholder="0.00"
-                                    inputmode="decimal" autocomplete="off">
-                            </div>
-
-                            <div id="cash-change" class="cash-change hidden">
-                                <div class="change-container">
-                                    <span>Cambio:</span>
-                                    <span id="change-amount">RD$ 0.00</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Botón de facturación -->
-                    <div class="invoice-button-container">
-                        <button id="invoice-btn" class="invoice-button" disabled>
-                            <i class="fas fa-receipt"></i>Facturar y Pagar
+                <div class="search-container">
+                    <div class="search-input-group">
+                        <input type="text" id="product-search" class="search-inputf"
+                            placeholder="Ingrese código o nombre de producto...">
+                        <button id="scanner-toggle" class="scanner-toggle-button" title="Activar escáner">
+                            <i class="fas fa-barcode"></i>
+                        </button>
+                        <button id="search-btn" class="search-button">
+                            <i class="fas fa-search"></i>
                         </button>
                     </div>
+                    <div id="search-suggestions" class="search-suggestions hidden">
+                        <!-- Las sugerencias se cargarán aquí -->
+                    </div>
+                </div>
+
+                <!-- Campo oculto para el escáner (inicialmente oculto) -->
+                <div id="scanner-input-container" class="scanner-input-container hidden">
+                    <input type="text" id="scanner-input" class="search-inputf" 
+                        placeholder="Modo escáner activo - Escanee un código de barras..." 
+                        style="text-align: center; font-size: 16px;"
+                        autocomplete="off">
+                    <button id="scanner-close" class="scanner-close-button" title="Cerrar modo escáner">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tabla de productos -->
+            <div class="card">
+                <div id="cart-table-container" class="cart-table-container hidden">
+                    <div class="table-wrapper">
+                        <table class="cart-table">
+                            <thead>
+                                <tr>
+                                    <th>Cantidad</th>
+                                    <th>Descripción</th>
+                                    <th>Precio</th>
+                                    <th>ITBIS (18%)</th>
+                                    <th>Total línea</th>
+                                    <th>Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody id="cart-items">
+                                <!-- Los productos se agregarán aquí dinámicamente -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Mensaje cuando el carrito está vacío -->
+                <div id="empty-cart" class="empty-cart">
+                    <i class="fas fa-shopping-cart empty-cart-icon"></i>
+                    <h3 class="empty-cart-title">Carrito vacío</h3>
+                    <p class="empty-cart-text">Busque productos para comenzar a facturar</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Panel derecho: Resumen y pago -->
+        <div class="panel-right">
+            <div class="card summary-container">
+                <!-- Resumen de venta -->
+                <div class="card-header">
+                    <h2 class="card-title">Resumen de Venta</h2>
+                </div>
+                <div class="card-body">
+                    <div class="summary-item">
+                        <span>Subtotal:</span>
+                        <span id="subtotal" class="summary-value">RD$ 0.00</span>
+                    </div>
+
+                    <div class="summary-item">
+                        <span>Descuento:</span>
+                        <span id="discount-total" class="summary-value">RD$ 0.00</span>
+                    </div>
+
+                    <div class="summary-item">
+                        <span>Total ITBIS:</span>
+                        <span id="itbis-total" class="summary-value">RD$ 0.00</span>
+                    </div>
+
+                    <div class="summary-total">
+                        <span>Total general:</span>
+                        <span id="total" class="total-amount">RD$ 0.00</span>
+                    </div>
+                </div>
+
+                <!-- Campo de descuento -->
+                <div class="discount-container">
+                    <div class="card-header">
+                        <h2 class="card-title">Aplicar Descuento</h2>
+                    </div>
+                    <div class="card-body">
+                        <div class="discount-input-group">
+                            <input type="text" id="discount-amount" class="discount-input" placeholder="0.00"
+                                inputmode="decimal" autocomplete="off">
+                            <select id="discount-type" class="discount-select">
+                                <option value="fixed">RD$</option>
+                                <option value="percentage">%</option>
+                            </select>
+                            <button id="apply-discount" class="discount-button">Aplicar</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Selección de pago -->
+                <div class="payment-methods"> 
+                    <div class="card-header">
+                        <h2 class="card-title">Método de Pago</h2>
+                    </div>
+                    <div class="card-body">
+                        <div class="payment-grid">
+                            <div class="payment-method" data-method="efectivo">
+                                <i class="fas fa-money-bill-wave payment-icon payment-green"></i>
+                                <p class="payment-label">Efectivo</p>
+                            </div>
+                            <div class="payment-method" data-method="tarjeta">
+                                <i class="fas fa-credit-card payment-icon payment-blue"></i>
+                                <p class="payment-label">Tarjeta</p>
+                            </div>
+                            <div class="payment-method" data-method="transferencia">
+                                <i class="fas fa-exchange-alt payment-icon payment-purple"></i>
+                                <p class="payment-label">Transferencia</p>
+                            </div>
+                            <div class="payment-method" data-method="credito">
+                                <i class="fas fa-file-invoice-dollar payment-icon payment-orange"></i>
+                                <p class="payment-label">Crédito</p>
+                            </div>
+                        </div>
+
+                        <div id="cash-input" class="cash-input">
+                            <label class="input-label">Monto recibido:</label>
+                            <input type="text" id="amount-received" class="amount-input" placeholder="0.00"
+                                inputmode="decimal" autocomplete="off">
+                        </div>
+
+                        <div id="cash-change" class="cash-change hidden">
+                            <div class="change-container">
+                                <span>Cambio:</span>
+                                <span id="change-amount">RD$ 0.00</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Botón de facturación -->
+                <div class="invoice-button-container">
+                    <button id="invoice-btn" class="invoice-button" disabled>
+                        <i class="fas fa-receipt"></i>Facturar y Pagar
+                    </button>
                 </div>
             </div>
         </div>
     </div>
+</div>
 
     <!-- Modal para seleccionar cliente/proveedor -->
     <div id="client-modal" class="modal">
@@ -215,9 +256,10 @@
                 <div class="search-container">
                     <div class="search-input-group">
                         <input type="text" id="modal-product-search" class="search-inputf"
-                            placeholder="Buscar productos por nombre o código...">
+                            placeholder="Buscar por nombre, código o categoría..."
+                            aria-label="Buscar productos">
                         <button id="modal-search-btn" class="search-button">
-                            <i class="fas fa-search"></i>
+                            <i class="fas fa-search"></i> Buscar
                         </button>
                     </div>
                 </div>
@@ -226,10 +268,10 @@
                     <table class="products-table">
                         <thead>
                             <tr>
-                                <th>Código</th>
-                                <th>Nombre</th>
-                                <th>Precio</th>
-                                <th>ITBIS</th>
+                                <th>Producto</th>
+                                <th>Categoría</th>
+                                <th class="text-right">Precio</th>
+                                <th class="text-center">En Existencia</th>
                             </tr>
                         </thead>
                         <tbody id="products-list">
@@ -359,6 +401,7 @@
             </div>
         </div>
     </div>
+
 
     <!-- Modal de crédito -->
     <div id="credit-modal" class="modal">

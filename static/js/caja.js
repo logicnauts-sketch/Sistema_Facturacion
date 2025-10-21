@@ -1,3 +1,6 @@
+// Variable para controlar múltiples clicks en cierre
+let isClosing = false;
+
 // Estado inicial vacío
 const state = {
     open: false,
@@ -11,6 +14,7 @@ const state = {
     ultimaFactura: null,
     turnoId: null  // Nuevo campo para almacenar el ID del turno
 };
+
 
 // Utilidades
 const $ = (id) => document.getElementById(id);
